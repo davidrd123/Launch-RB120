@@ -30,12 +30,8 @@ class Board
     reset
   end
 
-  def get_square_at(key)
-    @squares[key]
-  end
-
-  def set_square_at(key, marker)
-    @squares[key].marker = marker
+  def []=(num, marker)
+    @squares[num].marker = marker
   end
 
   def unmarked_keys
@@ -50,19 +46,20 @@ class Board
     !!winning_marker
   end
 
-  def count_human_marker(squares)
-    squares.collect(&:marker).count(TTTGame::HUMAN_MARKER)
+  # return the marker if three in a row, nil otherwise
+  def three_identical_markers?(squares)
+    markers = squares.filter(&:marked?).map(&:marker)
+    markers.size == 3 && markers.uniq.size == 1
   end
-
-  def count_computer_marker(squares)
-    squares.collect(&:marker).count(TTTGame::COMPUTER_MARKER)
-  end
-
+    
+  
   # returns winning marker or nil
   def winning_marker
     WINNING_LINES.each do |line|
-      return TTTGame::HUMAN_MARKER    if count_human_marker(@squares.values_at(*line))    == 3
-      return TTTGame::COMPUTER_MARKER if count_computer_marker(@squares.values_at(*line)) == 3
+      squares = @squares.values_at(*line)
+      if three_identical_markers?(squares)
+        return squares.first.marker
+      end
     end
     nil
   end
@@ -73,15 +70,15 @@ class Board
 
   def draw
     puts "     |     |     "
-    puts "  #{get_square_at(1)}  |  #{get_square_at(2)}  |  #{get_square_at(3)}  "
+    puts "  #{@squares[1]}  |  #{@squares[2]}  |  #{@squares[3]}  "
     puts "     |     |     "
     puts "-----+-----+-----"
     puts "     |     |     "
-    puts "  #{get_square_at(4)}  |  #{get_square_at(5)}  |  #{get_square_at(6)}  "
+    puts "  #{@squares[4]}  |  #{@squares[5]}  |  #{@squares[6]}  "
     puts "     |     |     "
     puts "-----+-----+-----"
     puts "     |     |     "
-    puts "  #{get_square_at(7)}  |  #{get_square_at(8)}  |  #{get_square_at(9)}  "
+    puts "  #{@squares[7]}  |  #{@squares[8]}  |  #{@squares[9]}  "
     puts "     |     |     "
     puts ""
   end
@@ -102,6 +99,10 @@ class Square
 
   def unmarked?
     marker == INITIAL_MARKER
+  end
+
+  def marked?
+    marker != INITIAL_MARKER
   end
 end
 
@@ -158,12 +159,11 @@ class TTTGame
       puts "Sorry, that's not a valid choice."
     end
 
-    # binding.pry
-    board.set_square_at(square, human.marker)
+    board[square] = human.marker
   end
 
   def computer_moves
-    board.set_square_at(board.unmarked_keys.to_a.sample, computer.marker)
+    board[board.unmarked_keys.sample] = computer.marker
   end
 
   def display_result
