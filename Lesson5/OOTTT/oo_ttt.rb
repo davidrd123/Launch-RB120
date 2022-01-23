@@ -12,7 +12,6 @@ Player
 - mark
 - play
 
-
 =end
 require 'pry'
 
@@ -51,8 +50,7 @@ class Board
     markers = squares.filter(&:marked?).map(&:marker)
     markers.size == 3 && markers.uniq.size == 1
   end
-    
-  
+
   # returns winning marker or nil
   def winning_marker
     WINNING_LINES.each do |line|
@@ -68,6 +66,8 @@ class Board
     (1..9).each { |key| @squares[key] = Square.new }
   end
 
+  # rubocop:disable Metrics/AbcSize
+  # rubocop:disable Metrics/MethodLength
   def draw
     puts "     |     |     "
     puts "  #{@squares[1]}  |  #{@squares[2]}  |  #{@squares[3]}  "
@@ -82,12 +82,15 @@ class Board
     puts "     |     |     "
     puts ""
   end
+  # rubocop:enable Metrics/AbcSize
+  # rubocop:enable Metrics/MethodLength
 end
 
 class Square
   INITIAL_MARKER = ' '
 
   attr_accessor :marker
+
   def initialize(marker=INITIAL_MARKER)
     # maybe a "status" to keep track of this square's mark?
     @marker = marker
@@ -108,6 +111,7 @@ end
 
 class Player
   attr_reader :marker
+
   def initialize(marker)
     # maybe a "marker" to keep track of this player's symbol (ie, 'X' or 'O')
     @marker = marker
@@ -129,31 +133,32 @@ class TTTGame
   end
 
   def play
-    display_welcome_message
     clear
-    loop do 
-      display_board
-
-      loop do
-        human_moves
-        break if board.someone_won? || board.full?
-
-        computer_moves
-        break if board.someone_won? || board.full?
-
-        clear_screen_and_display_board
-      end
-
-      display_result
-      break unless play_again?
-
-      reset
-    end
+    display_welcome_message
+    main_game
     display_goodbye_message
   end
 
-  
   private
+
+  def main_game
+    loop do
+      display_board
+      player_move
+      display_result
+      break unless play_again?
+      reset
+      display_play_again_message
+    end
+  end
+
+  def player_move
+    loop do
+      current_player_moves
+      break if board.someone_won? || board.full?
+      clear_screen_and_display_board if human_turn?
+    end
+  end
 
   def display_welcome_message
     puts "Welcome to Tic Tac Toe!"
@@ -239,9 +244,8 @@ class TTTGame
     @current_marker = FIRST_TO_MOVE
     clear
     puts "Let's play again!"
-    puts 
+    puts
   end
-
 end
 
 # we'll kick off the game like this
