@@ -184,8 +184,18 @@ class TTTGame
     board.draw
   end
 
+  def joinor(array, delimiter=', ', final_word='or')
+    case array.length
+    when 0 then ''
+    when 1 then array.first
+    when 2 then array.join(" #{final_word} ")
+    else
+      array[..-2].join(delimiter) + delimiter + "#{final_word} #{array.last}"
+    end
+  end
+
   def human_moves
-    puts "Choose a square (#{board.unmarked_keys.join(', ')}): "
+    puts "Choose a square (#{joinor(board.unmarked_keys)}): "
     square = nil
     loop do
       square = gets.chomp.to_i
@@ -251,3 +261,7 @@ end
 # we'll kick off the game like this
 game = TTTGame.new
 game.play
+
+
+
+# binding.pry

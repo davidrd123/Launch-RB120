@@ -247,6 +247,7 @@ class Game
       show_initial_cards
 
       player_turn
+      
       dealer_turn
 
       if @dealer.busted?
