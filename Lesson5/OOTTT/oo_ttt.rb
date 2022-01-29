@@ -45,10 +45,24 @@ class Board
     !!winning_marker
   end
 
-  # return the marker if three in a row, nil otherwise
-  def three_identical_markers?(squares)
-    markers = squares.filter(&:marked?).map(&:marker)
-    markers.size == 3 && markers.uniq.size == 1
+  # If there are two squares marked human.marker in a WINNING_LINE
+  # and one empty square, return true
+  def immediate_threat?
+    !!immediate_threat_loc
+  end
+
+  # Finds the location under threat for the computer
+  def immediate_threat_loc
+    WINNING_LINES.each do |line|
+      squares = @squares.values_at(*line)
+      if two_human_one_empty?(squares)
+        # Find location of empty square
+        # binding.pry
+        loc = squares.find_index { |square| square.marker == Square::INITIAL_MARKER}
+        return line[loc]
+      end
+    end
+    nil
   end
 
   # returns winning marker or nil
@@ -84,6 +98,19 @@ class Board
   end
   # rubocop:enable Metrics/AbcSize
   # rubocop:enable Metrics/MethodLength
+
+  private
+
+  # return the marker if three in a row, nil otherwise
+  def three_identical_markers?(squares)
+    markers = squares.filter(&:marked?).map(&:marker)
+    markers.size == 3 && markers.uniq.size == 1
+  end
+
+  def two_human_one_empty?(squares)
+    markers = squares.filter(&:marked?).map(&:marker)
+    markers.size == 2 && markers.uniq.size == 1 && markers.first == TTTGame::HUMAN_MARKER
+  end
 end
 
 class Square
@@ -118,17 +145,44 @@ class Player
   end
 end
 
+class Score
+  attr_accessor :computer, :human
+
+  def initialize
+    @computer = 0
+    @human = 0
+  end
+
+  def overall_winner?
+    computer == 5 || human == 5
+  end
+
+  def get_overall_winner
+    return :computer if computer == 5
+    return :human if human == 5
+    nil
+  end
+
+  def player_won_game(winner)
+    case winner
+    when :human then self.human += 1
+    when :computer then self.computer += 1
+    end
+  end
+end
+
 class TTTGame
   HUMAN_MARKER = "X"
   COMPUTER_MARKER = "O"
   FIRST_TO_MOVE = HUMAN_MARKER
 
-  attr_reader :board, :human, :computer
+  attr_reader :board, :human, :computer, :score
 
   def initialize
     @board = Board.new
     @human = Player.new(HUMAN_MARKER)
     @computer = Player.new(COMPUTER_MARKER)
+    @score = Score.new
     @current_marker = FIRST_TO_MOVE
   end
 
@@ -146,11 +200,19 @@ class TTTGame
       display_board
       player_move
       display_result
+      update_score
+      display_scoreboard
+      break if overall_winner?
       break unless play_again?
       reset
       display_play_again_message
     end
   end
+
+  def overall_winner?
+    score.overall_winner?
+  end
+
 
   def player_move
     loop do
@@ -166,16 +228,32 @@ class TTTGame
   end
 
   def display_goodbye_message
+    display_final_results
     puts "Thanks for playing Tic Tac Toe! Goodbye!"
   end
 
-  def clear
-    system 'clear'
+  def display_final_results
+    overall_winner = score.get_overall_winner
+    case overall_winner
+    when nil then puts "No overall winner"
+    when :human then puts "Human is overall winner"
+    when :computer then puts "Computer is overall winner"
+    end
+    display_scoreboard
+  end
+
+  def display_scoreboard
+    puts "Human: #{score.human}"
+    puts "Computer: #{score.computer}"
   end
 
   def clear_screen_and_display_board
     clear
     display_board
+  end
+
+  def human_turn?
+    @current_marker == HUMAN_MARKER
   end
 
   def display_board
@@ -206,8 +284,14 @@ class TTTGame
     board[square] = human.marker
   end
 
-  def computer_moves
-    board[board.unmarked_keys.sample] = computer.marker
+  def computer_moves()
+    # binding.pry
+    if board.immediate_threat?
+      puts "Computer: I see a threat at #{board.immediate_threat_loc}"
+      board[board.immediate_threat_loc] = computer.marker
+    else 
+      board[board.unmarked_keys.sample] = computer.marker
+    end
   end
 
   def current_player_moves
@@ -233,8 +317,13 @@ class TTTGame
     end
   end
 
-  def human_turn?
-    @current_marker == HUMAN_MARKER
+  def update_score
+    case board.winning_marker
+    when human.marker
+      score.player_won_game(:human)
+    when computer.marker
+      score.player_won_game(:computer)
+    end
   end
 
   def play_again?
@@ -249,10 +338,17 @@ class TTTGame
     answer == 'y'
   end
 
+  def clear
+    system 'clear'
+  end
+
   def reset
     board.reset
     @current_marker = FIRST_TO_MOVE
     clear
+  end
+
+  def display_play_again_message
     puts "Let's play again!"
     puts
   end
