@@ -45,17 +45,25 @@ class Board
     !!winning_marker
   end
 
+  def middle_square_open?
+    unmarked_keys.include?(5)
+  end
+
   # If there are two squares marked human.marker in a WINNING_LINE
   # and one empty square, return true
   def immediate_threat?
-    !!immediate_threat_loc
+    !!at_risk_square(TTTGame::HUMAN_MARKER)
   end
 
-  # Finds the location under threat for the computer
-  def immediate_threat_loc
+  def immediate_opportunity?
+    !!at_risk_square(TTTGame::COMPUTER_MARKER)
+  end
+
+  # Finds the location at risk for the player denoted by player_marker
+  def at_risk_square(player_marker)
     WINNING_LINES.each do |line|
       squares = @squares.values_at(*line)
-      if two_human_one_empty?(squares)
+      if two_marked_one_empty?(squares, player_marker)
         # Find location of empty square
         # binding.pry
         loc = squares.find_index { |square| square.marker == Square::INITIAL_MARKER}
@@ -107,9 +115,9 @@ class Board
     markers.size == 3 && markers.uniq.size == 1
   end
 
-  def two_human_one_empty?(squares)
+def two_marked_one_empty?(squares, player_marker)
     markers = squares.filter(&:marked?).map(&:marker)
-    markers.size == 2 && markers.uniq.size == 1 && markers.first == TTTGame::HUMAN_MARKER
+    markers.size == 2 && markers.uniq.size == 1 && markers.first == player_marker
   end
 end
 
@@ -183,7 +191,7 @@ class TTTGame
     @human = Player.new(HUMAN_MARKER)
     @computer = Player.new(COMPUTER_MARKER)
     @score = Score.new
-    @current_marker = FIRST_TO_MOVE
+    @current_marker = ask_first_to_move
   end
 
   def play
@@ -213,6 +221,20 @@ class TTTGame
     score.overall_winner?
   end
 
+  def ask_first_to_move
+    puts "Who is first to move? (H)uman, (C)omputer, or (R)andom?"
+    answer = nil
+    loop do
+      answer = gets.chomp.downcase
+      break if ["h", "c", "r"].include?(answer)
+      puts "Sorry, that's not a valid choice."
+    end
+    case answer
+    when 'c' then return COMPUTER_MARKER
+    when 'h' then return HUMAN_MARKER
+    when 'r' then [COMPUTER_MARKER, HUMAN_MARKER].sample
+    end
+  end
 
   def player_move
     loop do
@@ -281,17 +303,30 @@ class TTTGame
       puts "Sorry, that's not a valid choice."
     end
 
-    board[square] = human.marker
+    human_places_piece!(square)
   end
 
-  def computer_moves()
-    # binding.pry
-    if board.immediate_threat?
-      puts "Computer: I see a threat at #{board.immediate_threat_loc}"
-      board[board.immediate_threat_loc] = computer.marker
+  def computer_moves
+    if board.immediate_opportunity?
+      good_next_move = board.at_risk_square(computer.marker)
+      computer_places_piece!(good_next_move)
+    elsif board.immediate_threat?
+      good_next_move = board.at_risk_square(human.marker)
+      computer_places_piece!(good_next_move)
+    elsif board.middle_square_open?
+      good_next_move = 5
+      computer_places_piece!(good_next_move)
     else 
       board[board.unmarked_keys.sample] = computer.marker
     end
+  end
+
+  def human_places_piece!(square)
+    board[square] = human.marker
+  end
+
+  def computer_places_piece!(square)
+    board[square] = computer.marker
   end
 
   def current_player_moves
