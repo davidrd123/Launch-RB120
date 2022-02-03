@@ -184,14 +184,15 @@ class TTTGame
   COMPUTER_MARKER = "O"
   FIRST_TO_MOVE = HUMAN_MARKER
 
-  attr_reader :board, :human, :computer, :score
+  attr_reader :board, :human, :computer, :score, :first_to_move
 
   def initialize
     @board = Board.new
     @human = Player.new(HUMAN_MARKER)
     @computer = Player.new(COMPUTER_MARKER)
     @score = Score.new
-    @current_marker = ask_first_to_move
+    @first_to_move = ask_first_to_move
+    @current_marker = @first_to_move
   end
 
   def play
