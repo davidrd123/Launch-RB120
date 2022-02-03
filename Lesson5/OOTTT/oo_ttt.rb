@@ -16,6 +16,8 @@ Player
 require 'pry'
 
 class Board
+  attr_accessor :squares
+
   WINNING_LINES = [[1, 2, 3], [4, 5, 6], [7, 8, 9]] + # rows
                   [[1, 4, 7], [2, 5, 8], [3, 6, 9]] + # cols
                   [[1, 5, 9], [3, 5, 7]]              # diagonals
@@ -29,8 +31,120 @@ class Board
     reset
   end
 
+  def [](num)
+    @squares[num]
+  end
+
   def []=(num, marker)
     @squares[num].marker = marker
+  end
+
+  # Returns player who has the next turn on the board
+  def player(first_to_move)
+    xo_count = {}
+    xo_count['X'] = @squares.values.count {|square| square.marker == 'X'}
+    xo_count['O'] = @squares.values.count {|square| square.marker == 'O'}
+    # If there is parity of marker count, then the next player is the first_to_move
+    if xo_count['X'] == xo_count['O']
+      first_to_move
+    else
+      # Otherwise, the next player is the other marker
+      (first_to_move == 'X') ? 'O' : 'X'
+    end
+  end
+
+  def result(action, first_to_move)
+    # action is the number of the square that was selected
+    # first_to_move is the marker of the player who is to move next
+    # Raise exception if the action is not valid
+    # Returns a new board object if the action is valid
+    unless unmarked_keys.include?(action)
+      raise "Invalid action"
+    end
+    next_player = player(first_to_move)
+    # If the action is valid, then create a new board object
+    # and set the square at action to the next player's marker
+    board_copy = Marshal.load(Marshal.dump(self))
+    board_copy[action] = next_player
+    board_copy
+  end
+
+  def terminal?
+    # Returns true if the board is a terminal board
+    # (i.e. someone has won or the board is full)
+    # Otherwise, returns false
+    someone_won? || full?
+  end
+
+  def utility
+    # Returns 1 if X has won, -1 if O has won, 0 if it's a draw
+    # Returns nil if the board is not terminal
+    return nil unless terminal?
+    case winning_marker
+    when 'X' then 1
+    when 'O' then -1
+    else 0
+    end
+  end
+
+  
+  def max_value(board, first_to_move)
+    v = -Float::INFINITY
+    # p "Entered max_value"
+    # board.draw
+    # binding.pry
+    # Everything is evaluated wrt the board passed in, not the board thar self refers to
+    return board.utility if board.terminal?
+    board.actions.each do |action|
+      resulting_board = board.result(action, first_to_move)
+      # binding.pry
+      v = [v, min_value(resulting_board, first_to_move)].max
+    end
+    v
+  end
+
+  def min_value(board, first_to_move)
+    v = Float::INFINITY
+    # p "Entered min_value"
+    # board.draw
+    # binding.pry
+    return board.utility if board.terminal?
+    board.actions.each do |action|
+      resulting_board = board.result(action, first_to_move)
+      # binding.pry
+      v = [v, max_value(resulting_board, first_to_move)].min
+    end
+    v
+  end
+
+  def minimax(first_to_move)
+    best_action = nil
+    current_player = player(first_to_move)
+
+    if current_player == 'X'
+      best_value = -Float::INFINITY
+      actions.each do |action|
+        resulting_board = result(action, first_to_move)
+        if min_value(resulting_board, first_to_move) > best_value
+          best_value = min_value(resulting_board, first_to_move)
+          best_action = action
+        end
+      end
+    else
+      best_value = Float::INFINITY
+      actions.each do |action|
+        resulting_board = result(action, first_to_move)
+        if max_value(resulting_board, first_to_move) < best_value
+          best_value = max_value(resulting_board, first_to_move)
+          best_action = action
+        end
+      end
+    end
+    best_action
+  end
+
+  def actions
+    unmarked_keys
   end
 
   def unmarked_keys
@@ -308,18 +422,21 @@ class TTTGame
   end
 
   def computer_moves
-    if board.immediate_opportunity?
-      good_next_move = board.at_risk_square(computer.marker)
-      computer_places_piece!(good_next_move)
-    elsif board.immediate_threat?
-      good_next_move = board.at_risk_square(human.marker)
-      computer_places_piece!(good_next_move)
-    elsif board.middle_square_open?
-      good_next_move = 5
-      computer_places_piece!(good_next_move)
-    else 
-      board[board.unmarked_keys.sample] = computer.marker
-    end
+    good_next_move = board.minimax(@first_to_move)
+    computer_places_piece!(good_next_move)
+
+    # if board.immediate_opportunity?
+    #   good_next_move = board.at_risk_square(computer.marker)
+    #   computer_places_piece!(good_next_move)
+    # elsif board.immediate_threat?
+    #   good_next_move = board.at_risk_square(human.marker)
+    #   computer_places_piece!(good_next_move)
+    # elsif board.middle_square_open?
+    #   good_next_move = 5
+    #   computer_places_piece!(good_next_move)
+    # else 
+    #   board[board.unmarked_keys.sample] = computer.marker
+    # end
   end
 
   def human_places_piece!(square)
@@ -392,6 +509,10 @@ end
 
 # we'll kick off the game like this
 game = TTTGame.new
+# game.board[1] = 'X'
+# game.board[3] = 'O'
+# game.board[5] = 'X'
+# binding.pry
 game.play
 
 
