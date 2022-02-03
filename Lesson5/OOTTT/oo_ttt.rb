@@ -35,7 +35,7 @@ class Board
     @squares[num]
   end
 
-  def []=(num, marker)
+  def []=(num,git marker)
     @squares[num].marker = marker
   end
 
@@ -87,12 +87,8 @@ class Board
     end
   end
 
-  
   def max_value(board, first_to_move)
     v = -Float::INFINITY
-    # p "Entered max_value"
-    # board.draw
-    # binding.pry
     # Everything is evaluated wrt the board passed in, not the board thar self refers to
     return board.utility if board.terminal?
     board.actions.each do |action|
@@ -105,9 +101,6 @@ class Board
 
   def min_value(board, first_to_move)
     v = Float::INFINITY
-    # p "Entered min_value"
-    # board.draw
-    # binding.pry
     return board.utility if board.terminal?
     board.actions.each do |action|
       resulting_board = board.result(action, first_to_move)
@@ -153,6 +146,11 @@ class Board
 
   def full?
     unmarked_keys.empty?
+  end
+
+  def empty?
+
+    @squares.values.all? { |square| square.unmarked? }
   end
 
   def someone_won?
@@ -202,8 +200,6 @@ class Board
     (1..9).each { |key| @squares[key] = Square.new }
   end
 
-  # rubocop:disable Metrics/AbcSize
-  # rubocop:disable Metrics/MethodLength
   def draw
     puts "     |     |     "
     puts "  #{@squares[1]}  |  #{@squares[2]}  |  #{@squares[3]}  "
@@ -218,8 +214,6 @@ class Board
     puts "     |     |     "
     puts ""
   end
-  # rubocop:enable Metrics/AbcSize
-  # rubocop:enable Metrics/MethodLength
 
   private
 
@@ -268,6 +262,8 @@ class Player
 end
 
 class Score
+  WINNING_SCORE = 5
+
   attr_accessor :computer, :human
 
   def initialize
@@ -276,12 +272,13 @@ class Score
   end
 
   def overall_winner?
-    computer == 5 || human == 5
+    # computer == WINNING_SCORE || human == WINNING_SCORE
+    !!get_overall_winner
   end
 
   def get_overall_winner
-    return :computer if computer == 5
-    return :human if human == 5
+    return :computer if computer == WINNING_SCORE
+    return :human if human == WINNING_SCORE
     nil
   end
 
@@ -296,7 +293,6 @@ end
 class TTTGame
   HUMAN_MARKER = "X"
   COMPUTER_MARKER = "O"
-  FIRST_TO_MOVE = HUMAN_MARKER
 
   attr_reader :board, :human, :computer, :score, :first_to_move
 
@@ -341,13 +337,13 @@ class TTTGame
     answer = nil
     loop do
       answer = gets.chomp.downcase
-      break if ["h", "c", "r"].include?(answer)
+      break if ["h", "human", "c", "computer", "r", "random"].include?(answer)
       puts "Sorry, that's not a valid choice."
     end
     case answer
-    when 'c' then return COMPUTER_MARKER
-    when 'h' then return HUMAN_MARKER
-    when 'r' then [COMPUTER_MARKER, HUMAN_MARKER].sample
+    when 'c', 'computer' then return COMPUTER_MARKER
+    when 'h', 'human' then return HUMAN_MARKER
+    when 'r', 'random' then [COMPUTER_MARKER, HUMAN_MARKER].sample
     end
   end
 
@@ -422,21 +418,21 @@ class TTTGame
   end
 
   def computer_moves
-    good_next_move = board.minimax(@first_to_move)
-    computer_places_piece!(good_next_move)
-
+    if board.empty?
+      good_next_move = 1
+    else
+      good_next_move = board.minimax(@first_to_move)
+    end
     # if board.immediate_opportunity?
     #   good_next_move = board.at_risk_square(computer.marker)
-    #   computer_places_piece!(good_next_move)
     # elsif board.immediate_threat?
     #   good_next_move = board.at_risk_square(human.marker)
-    #   computer_places_piece!(good_next_move)
     # elsif board.middle_square_open?
     #   good_next_move = 5
-    #   computer_places_piece!(good_next_move)
     # else 
-    #   board[board.unmarked_keys.sample] = computer.marker
+    #   good_next_move = board.unmarked_keys.sample
     # end
+    computer_places_piece!(good_next_move)
   end
 
   def human_places_piece!(square)
@@ -497,7 +493,7 @@ class TTTGame
 
   def reset
     board.reset
-    @current_marker = FIRST_TO_MOVE
+    @current_marker = @first_to_move
     clear
   end
 
