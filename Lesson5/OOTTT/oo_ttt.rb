@@ -131,17 +131,20 @@ module Displayable
 end
 
 module Minimax
+  def marker_count(marker)
+    squares.count {|_, sqr| sqr.marker == marker}
+  end
+
   # Returns player who has the next turn on the board
-  def player(first_to_move)
-    xo_count = {}
-    xo_count[human_marker] = squares.values.count {|square| square.marker == human_marker}
-    xo_count[computer_marker] = squares.values.count {|square| square.marker == computer_marker}
-    # If there is parity of marker count, then the next player is the first_to_move
-    if xo_count[human_marker] == xo_count[computer_marker]
+  def next_player(first_to_move)
+    human_marker_ct = marker_count(human_marker)
+    computer_marker_ct = marker_count(computer_marker)
+    if human_marker_ct == computer_marker_ct
       first_to_move
+    elsif human_marker_ct > computer_marker_ct
+      computer_marker
     else
-      # Otherwise, the next player is the other marker
-      first_to_move == human_marker ? computer_marker : human_marker
+      human_marker
     end
   end
 
@@ -153,7 +156,7 @@ module Minimax
     unless unmarked_keys.include?(action)
       raise "Invalid action"
     end
-    next_player = player(first_to_move)
+    next_player = next_player(first_to_move)
     # If the action is valid, then create a new board object
     # and set the square at action to the next player's marker
     board_copy = Marshal.load(Marshal.dump(self))
