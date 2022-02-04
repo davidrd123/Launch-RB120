@@ -65,7 +65,7 @@ module Displayable
   end
 
   def display_final_results
-    overall_winner = score.get_overall_winner
+    overall_winner = score.game_overall_winner
     case overall_winner
     when nil then puts "No overall winner"
     when :human then puts "Human is overall winner"
@@ -130,33 +130,7 @@ module Displayable
   end
 end
 
-class Board
-  attr_accessor :squares, :human_marker, :computer_marker
-
-  WINNING_LINES = [[1, 2, 3], [4, 5, 6], [7, 8, 9]] + # rows
-                  [[1, 4, 7], [2, 5, 8], [3, 6, 9]] + # cols
-                  [[1, 5, 9], [3, 5, 7]]              # diagonals
-
-  def initialize(human_marker='X', computer_marker='O')
-    @squares = {}
-    @human_marker = human_marker
-    @computer_marker = computer_marker
-    reset
-  end
-
-  def [](num)
-    squares[num]
-  end
-
-  def []=(num, marker)
-    squares[num].marker = marker
-  end
-
-  def set_player_markers(human, computer)
-    self.human_marker = human
-    self.computer_marker = computer
-  end
-
+module Minimax
   # Returns player who has the next turn on the board
   def player(first_to_move)
     xo_count = {}
@@ -187,13 +161,6 @@ class Board
     board_copy
   end
 
-  def terminal?
-    # Returns true if the board is a terminal board
-    # (i.e. someone has won or the board is full)
-    # Otherwise, returns false
-    someone_won? || full?
-  end
-
   def utility
     # Returns 1 if X has won, -1 if O has won, 0 if it's a draw
     # Returns nil if the board is not terminal
@@ -207,7 +174,6 @@ class Board
 
   def max_value(board, first_to_move)
     v = -Float::INFINITY
-    # Everything is evaluated wrt the board passed in, not the board thar self refers to
     return board.utility if board.terminal?
     board.actions.each do |action|
       resulting_board = board.result(action, first_to_move)
@@ -228,7 +194,6 @@ class Board
 
   def minimax(first_to_move)
     best_action = nil
-    current_player = player(first_to_move)
     best_value = Float::INFINITY
     actions.each do |action|
       resulting_board = result(action, first_to_move)
@@ -242,6 +207,42 @@ class Board
 
   def actions
     unmarked_keys
+  end
+end
+
+class Board
+  include Minimax
+  attr_accessor :squares, :human_marker, :computer_marker
+
+  WINNING_LINES = [[1, 2, 3], [4, 5, 6], [7, 8, 9]] + # rows
+                  [[1, 4, 7], [2, 5, 8], [3, 6, 9]] + # cols
+                  [[1, 5, 9], [3, 5, 7]]              # diagonals
+
+  def initialize(human_marker='X', computer_marker='O')
+    @squares = {}
+    @human_marker = human_marker
+    @computer_marker = computer_marker
+    reset
+  end
+
+  def [](num)
+    squares[num]
+  end
+
+  def []=(num, marker)
+    squares[num].marker = marker
+  end
+
+  def set_player_markers(human, computer)
+    self.human_marker = human
+    self.computer_marker = computer
+  end
+
+  def terminal?
+    # Returns true if the board is a terminal board
+    # (i.e. someone has won or the board is full)
+    # Otherwise, returns false
+    someone_won? || full?
   end
 
   def unmarked_keys
@@ -379,10 +380,10 @@ class Score
 
   def overall_winner?
     # computer == WINNING_SCORE || human == WINNING_SCORE
-    !!get_overall_winner
+    !!game_overall_winner
   end
 
-  def get_overall_winner
+  def game_overall_winner
     return :computer if computer == WINNING_SCORE
     return :human if human == WINNING_SCORE
     nil
