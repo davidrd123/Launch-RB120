@@ -48,7 +48,7 @@ module Displayable
 
   def display_play_again_message
     prompt "Let's play again!"
-    puts
+    prompt ""
   end
 
   def display_game_result
@@ -267,7 +267,7 @@ class Board
   end
 
   def empty?
-    @squares.values.all? { |square| square.unmarked? }
+    @squares.values.all?(&:unmarked?)
   end
 
   def someone_won?
@@ -476,9 +476,9 @@ class TTTGame
       puts "Sorry, that's not a valid choice."
     end
     case answer
-    when 'c', 'computer' then COMPUTER_MARKER
-    when 'h', 'human' then HUMAN_MARKER
-    when 'r', 'random' then [COMPUTER_MARKER, HUMAN_MARKER].sample
+    when 'c', 'computer' then computer.marker
+    when 'h', 'human' then human.marker
+    when 'r', 'random' then [computer.marker, human.marker].sample
     end
   end
 
@@ -486,12 +486,12 @@ class TTTGame
     loop do
       current_player_moves
       break if board.someone_won? || board.full?
-      clear_screen_and_display_board #if human_turn?
+      clear_screen_and_display_board # if human_turn?
     end
   end
 
   def human_turn?
-    @current_marker == HUMAN_MARKER
+    @current_marker == @human.marker
   end
 
 
@@ -539,10 +539,10 @@ class TTTGame
   def current_player_moves
     if human_turn?
       human_moves
-      @current_marker = COMPUTER_MARKER
+      @current_marker = @computer.marker
     else
       computer_moves
-      @current_marker = HUMAN_MARKER
+      @current_marker = @human.marker
     end
   end
 
