@@ -75,8 +75,8 @@ module Displayable
   end
 
   def display_scoreboard
-    puts "#{@human.name}: #{score.human}"
-    puts "#{@computer.name}: #{score.computer}"
+    puts "#{human.name}: #{score.human}"
+    puts "#{computer.name}: #{score.computer}"
   end
 
   def ask_player_name(which_player)
@@ -145,29 +145,29 @@ class Board
   end
 
   def [](num)
-    @squares[num]
+    squares[num]
   end
 
   def []=(num, marker)
-    @squares[num].marker = marker
+    squares[num].marker = marker
   end
 
   def set_player_markers(human, computer)
-    @human_marker = human
-    @computer_marker = computer
+    self.human_marker = human
+    self.computer_marker = computer
   end
 
   # Returns player who has the next turn on the board
   def player(first_to_move)
     xo_count = {}
-    xo_count[@human_marker] = @squares.values.count {|square| square.marker == @human_marker}
-    xo_count[@computer_marker] = @squares.values.count {|square| square.marker == @computer_marker}
+    xo_count[human_marker] = squares.values.count {|square| square.marker == human_marker}
+    xo_count[computer_marker] = squares.values.count {|square| square.marker == computer_marker}
     # If there is parity of marker count, then the next player is the first_to_move
-    if xo_count[@human_marker] == xo_count[@computer_marker]
+    if xo_count[human_marker] == xo_count[computer_marker]
       first_to_move
     else
       # Otherwise, the next player is the other marker
-      first_to_move == @human_marker ? @computer_marker : @human_marker
+      first_to_move == human_marker ? computer_marker : human_marker
     end
   end
 
@@ -199,8 +199,8 @@ class Board
     # Returns nil if the board is not terminal
     return nil unless terminal?
     case winning_marker
-    when @human_marker then 1
-    when @computer_marker then -1
+    when human_marker then 1
+    when computer_marker then -1
     else 0
     end
   end
@@ -211,7 +211,6 @@ class Board
     return board.utility if board.terminal?
     board.actions.each do |action|
       resulting_board = board.result(action, first_to_move)
-      # binding.pry
       v = [v, min_value(resulting_board, first_to_move)].max
     end
     v
@@ -222,7 +221,6 @@ class Board
     return board.utility if board.terminal?
     board.actions.each do |action|
       resulting_board = board.result(action, first_to_move)
-      # binding.pry
       v = [v, max_value(resulting_board, first_to_move)].min
     end
     v
@@ -231,24 +229,12 @@ class Board
   def minimax(first_to_move)
     best_action = nil
     current_player = player(first_to_move)
-
-    if current_player == @human_marker
-      best_value = -Float::INFINITY
-      actions.each do |action|
-        resulting_board = result(action, first_to_move)
-        if min_value(resulting_board, first_to_move) > best_value
-          best_value = min_value(resulting_board, first_to_move)
-          best_action = action
-        end
-      end
-    else
-      best_value = Float::INFINITY
-      actions.each do |action|
-        resulting_board = result(action, first_to_move)
-        if max_value(resulting_board, first_to_move) < best_value
-          best_value = max_value(resulting_board, first_to_move)
-          best_action = action
-        end
+    best_value = Float::INFINITY
+    actions.each do |action|
+      resulting_board = result(action, first_to_move)
+      if max_value(resulting_board, first_to_move) < best_value
+        best_value = max_value(resulting_board, first_to_move)
+        best_action = action
       end
     end
     best_action
