@@ -15,12 +15,13 @@ Player
 =end
 require 'pry'
 require 'yaml'
+require_relative 'oo_ttt_display.rb'
 
 module Displayable
   def prompt(message)
     puts "=> #{message}"
   end
-  
+
   def clear
     system 'clear'
   end
@@ -37,8 +38,34 @@ module Displayable
   end
 
   def display_welcome_message
-    puts "Welcome to Tic Tac Toe!"
-    puts ""
+    # puts "Welcome to Tic Tac Toe!"
+    # puts ""
+    welcome = Phrase.new('welcome')
+    to = Phrase.new('to')
+    tic = Phrase.new('tic ___ ___')
+    tictac = Phrase.new('tic tac ___')
+    tictactoe = Phrase.new('tic tac toe')
+    system 'clear'
+    welcome.display_center
+    sleep(1)
+    system 'clear'
+    to.display_center
+    sleep(1)
+    system 'clear'
+    tic.display_center
+    sleep(0.5)
+    system 'clear'
+    tictac.display_center
+    sleep(0.5)
+    system 'clear'
+    tictactoe.display_center
+    sleep(0.5)
+  end
+
+  def display_tutorial
+    puts "Tic Tac Toe is a 2-player board game played on a 3x3 grid."
+    puts "Players take turns marking a square."
+    puts "The first player to mark 3 squares in a row wins."
   end
 
   def display_goodbye_message
@@ -87,7 +114,7 @@ module Displayable
     player_name = nil
     loop do
       player_name = gets.chomp
-      break unless player_name.empty?
+      break unless player_name.delete(' ').empty?
     end
     player_name
   end
@@ -104,7 +131,7 @@ module Displayable
   end
 
   def valid_marker?(marker)
-    marker.length == 1 && marker != computer.marker
+    marker.length == 1 && marker != computer.marker && marker != ' '
   end
 
   def play_again?
@@ -305,6 +332,10 @@ class Board
 
   def reset
     (1..9).each { |key| @squares[key] = Square.new }
+  end
+
+  def tutorial
+    (1..9).each { |key| @squares[key] = Square.new(key.to_s) }
   end
 
   # rubocop:disable Metrics/AbcSize
