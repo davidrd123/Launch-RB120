@@ -38,28 +38,16 @@ module Displayable
   end
 
   def display_welcome_message
-    # puts "Welcome to Tic Tac Toe!"
-    # puts ""
-    welcome = Phrase.new('welcome')
-    to = Phrase.new('to')
-    tic = Phrase.new('tic ___ ___')
-    tictac = Phrase.new('tic tac ___')
-    tictactoe = Phrase.new('tic tac toe')
-    system 'clear'
-    welcome.display_center
-    sleep(1)
-    system 'clear'
-    to.display_center
-    sleep(1)
-    system 'clear'
-    tic.display_center
-    sleep(0.5)
-    system 'clear'
-    tictac.display_center
-    sleep(0.5)
-    system 'clear'
-    tictactoe.display_center
-    sleep(0.5)
+    welcome = Phrase.new('welcome', 1)
+    to = Phrase.new('to', 1)
+    tic = Phrase.new('tic ___ ___', 0.5)
+    tictac = Phrase.new('tic tac ___', 0.5)
+    tictactoe = Phrase.new('tic tac toe', 0.5)
+    full_message = [welcome, to, tic, tictac, tictactoe]
+    full_message.each do |phrase|
+      clear
+      phrase.display_center
+    end
   end
 
   def display_tutorial
@@ -176,16 +164,7 @@ module Minimax
   end
 
   def result(action, first_to_move)
-    # action is the number of the square that was selected
-    # first_to_move is the marker of the player who is to move next
-    # Raise exception if the action is not valid
-    # Returns a new board object if the action is valid
-    unless unmarked_keys.include?(action)
-      raise "Invalid action"
-    end
     next_player = next_player(first_to_move)
-    # If the action is valid, then create a new board object
-    # and set the square at action to the next player's marker
     board_copy = Marshal.load(Marshal.dump(self))
     board_copy[action] = next_player
     board_copy
@@ -447,8 +426,6 @@ class TTTGame
     @score = Score.new
     @first_to_move = nil
     @current_marker = nil
-    @human_name = nil
-    @computer_name = nil
   end
 
   def play

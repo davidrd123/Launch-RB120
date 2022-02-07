@@ -201,10 +201,11 @@ class Word
 end
 
 class Phrase
-  def initialize(phrase)
+  def initialize(phrase, delay = 0)
     @words = phrase.split(' ').map { |word| Word.new(word) }
     @grid_height = Letter::HEIGHT
     @char_grid = Array.new(@grid_height) { '' }
+    @delay = delay
     fill_grid
   end
 
@@ -224,6 +225,7 @@ class Phrase
     @char_grid.each do |row|
       puts row.center(80)
     end
+    sleep(@delay)
   end
 end
 
