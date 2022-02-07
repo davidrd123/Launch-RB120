@@ -31,8 +31,6 @@ module GameIO
     gets
   end
 
-  
-
   def ask_first_to_move
     puts "Who is first to move? (H)uman, (C)omputer, or (R)andom?"
     answer = nil
@@ -51,8 +49,6 @@ module GameIO
     when 'r', 'random' then [computer.marker, human.marker].sample
     end
   end
-
-  
 end
 
 module Stringable
@@ -94,7 +90,6 @@ module Minimax
 
   def utility
     # Returns 1 if human has won, -1 if computer has won, 0 if it's a draw
-    # Returns nil if the board is not terminal
     return nil unless terminal?
     case winning_marker
     when human_marker then 1
@@ -144,7 +139,7 @@ end
 
 class Board
   include Minimax
-  attr_accessor :squares, :human_marker, :computer_marker
+  attr_accessor :squares, :human_marker, :computer_marker, :first_to_move
 
   WINNING_LINES = [[1, 2, 3], [4, 5, 6], [7, 8, 9]] + # rows
                   [[1, 4, 7], [2, 5, 8], [3, 6, 9]] + # cols
@@ -152,6 +147,9 @@ class Board
 
   def initialize
     @squares = {}
+    @human_marker = nil
+    @computer_marker = nil
+    @first_to_move = nil
     reset
   end
 
@@ -361,6 +359,39 @@ class Computer < Player
     @marker = COMPUTER_MARKER
   end
 
+  def move(logic = :minimax)
+    puts "#{name} is thinking..."
+    mark_square!(good_next_move(logic))
+    sleep(0.5)
+  end
+
+  def good_next_move(logic = :minimax)
+    if logic == :minimax
+      minimax_move
+    else
+      heuristic_move
+    end
+  end
+
+  def minimax_move
+    if board.empty?
+      1
+    else
+      board.minimax(board.first_to_move)
+    end
+  end
+
+  def heuristic_move
+    if board.immediate_opportunity?
+      board.at_risk_square(marker)
+    elsif board.immediate_threat?
+      board.at_risk_square(board.human_marker)
+    elsif board.middle_square_open?
+      5
+    else
+      board.unmarked_keys.sample
+    end
+  end
 end
 
 class Score
@@ -395,8 +426,6 @@ end
 class TTTGame
   include GameIO
 
-  HUMAN_MARKER = "X"
-
   def initialize
     @board = Board.new
     display_welcome_message
@@ -405,6 +434,7 @@ class TTTGame
     @score = Score.new
     board.set_player_markers(human.marker, computer.marker)
     @first_to_move = ask_first_to_move
+    board.first_to_move = @first_to_move
     @current_marker = first_to_move
   end
 
@@ -460,66 +490,13 @@ class TTTGame
     @current_marker == human.marker
   end
 
-  def human_moves
-    prompt "Choose a square (#{joinor(board.unmarked_keys)}): "
-    square = nil
-    loop do
-      square = gets.chomp.to_i
-      break if board.unmarked_keys.include?(square)
-      puts "Sorry, that's not a valid choice."
-    end
-
-    human_places_piece!(square)
-  end
-
-  def computer_moves(logic = :minimax)
-    puts "#{@computer.name} is thinking..."
-    computer_places_piece!(good_next_move(logic))
-    sleep(0.5)
-  end
-
-  def good_next_move(logic = :minimax)
-    if logic == :minimax
-      computer_minimax_move
-    else
-      computer_heuristic_move
-    end
-  end
-
-  def computer_minimax_move
-    if board.empty?
-      1
-    else
-      board.minimax(@first_to_move)
-    end
-  end
-
-  def computer_heuristic_move
-    if board.immediate_opportunity?
-      board.at_risk_square(computer.marker)
-    elsif board.immediate_threat?
-      board.at_risk_square(human.marker)
-    elsif board.middle_square_open?
-      5
-    else
-      board.unmarked_keys.sample
-    end
-  end
-
-  def human_places_piece!(square)
-    board[square] = human.marker
-  end
-
-  def computer_places_piece!(square)
-    board[square] = computer.marker
-  end
-
   def current_player_moves
     if human_turn?
       human.move
       @current_marker = computer.marker
     else
-      computer_moves
+      # computer_moves
+      computer.move
       @current_marker = human.marker
     end
   end
