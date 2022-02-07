@@ -17,7 +17,7 @@ require 'pry'
 require 'yaml'
 require_relative 'oo_ttt_display.rb'
 
-module Displayable
+module GameIO
   def prompt(message)
     puts "=> #{message}"
   end
@@ -38,22 +38,39 @@ module Displayable
   end
 
   def display_welcome_message
-    welcome = Phrase.new('welcome', 1)
-    to = Phrase.new('to', 1)
-    tic = Phrase.new('tic ___ ___', 0.5)
-    tictac = Phrase.new('tic tac ___', 0.5)
-    tictactoe = Phrase.new('tic tac toe', 0.5)
+    welcome = Phrase.new('welcome', 0.75)
+    to = Phrase.new('to', 0.75)
+    tic = Phrase.new('tic ___ ___', 0.4)
+    tictac = Phrase.new('tic tac ___', 0.4)
+    tictactoe = Phrase.new('tic tac toe', 0.4)
     full_message = [welcome, to, tic, tictac, tictactoe]
     full_message.each do |phrase|
       clear
       phrase.display_center
     end
+    puts
+    prompt "Press Enter to continue."
+    gets
+    clear
   end
 
   def display_tutorial
-    puts "Tic Tac Toe is a 2-player board game played on a 3x3 grid."
-    puts "Players take turns marking a square."
-    puts "The first player to mark 3 squares in a row wins."
+    clear
+    display_tutorial_board
+    puts <<-MSG
+    Players take turns marking a square. 
+    The first player to mark 3 squares in a row wins the match.
+    The first player to win 5 matches wins the game.
+    To mark a square, enter the number of the square you'd like to mark.
+    MSG
+    prompt "Press Enter to continue."
+    gets
+  end
+
+  def display_tutorial_board
+    tut_board = Board.new
+    tut_board.tutorial
+    tut_board.draw
   end
 
   def display_goodbye_message
@@ -107,15 +124,34 @@ module Displayable
     player_name
   end
 
-  def ask_player_marker(which_player)
+  def ask_player_marker
     marker = nil
     loop do
       prompt "What marker would you like to use?"
       marker = gets.chomp
       break if valid_marker?(marker)
-      prompt "Sorry, that's not a valid marker."
+      puts "Sorry, that's not a valid marker."
     end
     marker
+  end
+
+  def ask_first_to_move
+    puts "Who is first to move? (H)uman, (C)omputer, or (R)andom?"
+    answer = nil
+    loop do
+      answer = gets.chomp.downcase
+      break if ["h", "human", "c", "computer", "r", "random"].include?(answer)
+      puts "Sorry, that's not a valid choice."
+    end
+    convert_answer_to_marker(answer)
+  end
+
+  def convert_answer_to_marker(answer)
+    case answer
+    when 'c', 'computer' then computer.marker
+    when 'h', 'human' then human.marker
+    when 'r', 'random' then [computer.marker, human.marker].sample
+    end
   end
 
   def valid_marker?(marker)
@@ -147,7 +183,7 @@ end
 
 module Minimax
   def marker_count(marker)
-    squares.count {|_, sqr| sqr.marker == marker}
+    squares.count { |_, sqr| sqr.marker == marker }
   end
 
   # Returns player who has the next turn on the board
@@ -171,7 +207,7 @@ module Minimax
   end
 
   def utility
-    # Returns 1 if X has won, -1 if O has won, 0 if it's a draw
+    # Returns 1 if human has won, -1 if computer has won, 0 if it's a draw
     # Returns nil if the board is not terminal
     return nil unless terminal?
     case winning_marker
@@ -227,10 +263,8 @@ class Board
                   [[1, 4, 7], [2, 5, 8], [3, 6, 9]] + # cols
                   [[1, 5, 9], [3, 5, 7]]              # diagonals
 
-  def initialize(human_marker='X', computer_marker='O')
+  def initialize
     @squares = {}
-    @human_marker = human_marker
-    @computer_marker = computer_marker
     reset
   end
 
@@ -248,9 +282,6 @@ class Board
   end
 
   def terminal?
-    # Returns true if the board is a terminal board
-    # (i.e. someone has won or the board is full)
-    # Otherwise, returns false
     someone_won? || full?
   end
 
@@ -274,8 +305,6 @@ class Board
     unmarked_keys.include?(5)
   end
 
-  # If there are two squares marked human.marker in a WINNING_LINE
-  # and one empty square, return true
   def immediate_threat?
     !!at_risk_square(@human_marker)
   end
@@ -289,10 +318,7 @@ class Board
     WINNING_LINES.each do |line|
       squares = @squares.values_at(*line)
       if two_marked_one_empty?(squares, player_marker)
-        # Find location of empty square
-        # binding.pry
-        loc = squares.find_index { |square| square.marker == Square::INITIAL_MARKER}
-        return line[loc]
+        return line.select { |sqr| @squares[sqr].unmarked? }.first
       end
     end
     nil
@@ -318,6 +344,7 @@ class Board
   end
 
   # rubocop:disable Metrics/AbcSize
+  # rubocop:disable Metrics/MethodLength
   def draw
     puts "     |     |     "
     puts "  #{@squares[1]}  |  #{@squares[2]}  |  #{@squares[3]}  "
@@ -333,6 +360,7 @@ class Board
     puts ""
   end
   # rubocop:enable Metrics/AbcSize
+  # rubocop:enable Metrics/MethodLength
 
   private
 
@@ -354,7 +382,6 @@ class Square
   attr_accessor :marker
 
   def initialize(marker=INITIAL_MARKER)
-    # maybe a "status" to keep track of this square's mark?
     @marker = marker
   end
 
@@ -411,13 +438,11 @@ class Score
 end
 
 class TTTGame
-  include Displayable
+  include GameIO
 
   HUMAN_MARKER = "X"
   COMPUTER_MARKER = "O"
   COMPUTER_NAMES = ["Hal", "Colossus", "Ultron", "Skynet", "The Borg"]
-
-  attr_reader :board, :human, :computer, :score, :first_to_move
 
   def initialize
     @human = Player.new(HUMAN_MARKER)
@@ -432,17 +457,20 @@ class TTTGame
     clear
     display_welcome_message
     setup_game
+    display_tutorial
     main_game
     display_goodbye_message
   end
 
   private
 
+  attr_reader :board, :human, :computer, :score, :first_to_move
+
   def setup_game
     @human.name = ask_player_name(:human)
     @computer.name = COMPUTER_NAMES.sample
-    @human.marker = ask_player_marker(:human)
-    @board.set_player_markers(@human.marker, @computer.marker)
+    @human.marker = ask_player_marker
+    @board.set_player_markers(human.marker, computer.marker)
     @first_to_move = ask_first_to_move
     @current_marker = @first_to_move
   end
@@ -465,26 +493,11 @@ class TTTGame
     score.overall_winner?
   end
 
-  def ask_first_to_move
-    puts "Who is first to move? (H)uman, (C)omputer, or (R)andom?"
-    answer = nil
-    loop do
-      answer = gets.chomp.downcase
-      break if ["h", "human", "c", "computer", "r", "random"].include?(answer)
-      puts "Sorry, that's not a valid choice."
-    end
-    case answer
-    when 'c', 'computer' then computer.marker
-    when 'h', 'human' then human.marker
-    when 'r', 'random' then [computer.marker, human.marker].sample
-    end
-  end
-
   def player_move
     loop do
       current_player_moves
-      break if board.someone_won? || board.full?
-      clear_screen_and_display_board # if human_turn?
+      break if board.terminal?
+      clear_screen_and_display_board
     end
   end
 
@@ -492,10 +505,8 @@ class TTTGame
     @current_marker == @human.marker
   end
 
-
-
   def human_moves
-    puts "Choose a square (#{joinor(board.unmarked_keys)}): "
+    prompt "Choose a square (#{joinor(board.unmarked_keys)}): "
     square = nil
     loop do
       square = gets.chomp.to_i
@@ -506,24 +517,38 @@ class TTTGame
     human_places_piece!(square)
   end
 
-  def computer_moves
+  def computer_moves(logic = :minimax)
     puts "#{@computer.name} is thinking..."
-    if board.empty?
-      good_next_move = 1
-    else
-      good_next_move = board.minimax(@first_to_move)
-    end
     sleep(0.5)
-    # if board.immediate_opportunity?
-    #   good_next_move = board.at_risk_square(computer.marker)
-    # elsif board.immediate_threat?
-    #   good_next_move = board.at_risk_square(human.marker)
-    # elsif board.middle_square_open?
-    #   good_next_move = 5
-    # else 
-    #   good_next_move = board.unmarked_keys.sample
-    # end
-    computer_places_piece!(good_next_move)
+    computer_places_piece!(good_next_move(logic))
+  end
+
+  def good_next_move(logic = :minimax)
+    if logic == :minimax
+      computer_minimax_move
+    else
+      computer_heuristic_move
+    end
+  end
+
+  def computer_minimax_move
+    if board.empty?
+      1
+    else
+      board.minimax(@first_to_move)
+    end
+  end
+
+  def computer_heuristic_move
+    if board.immediate_opportunity?
+      board.at_risk_square(computer.marker)
+    elsif board.immediate_threat?
+      board.at_risk_square(human.marker)
+    elsif board.middle_square_open?
+      5
+    else
+      board.unmarked_keys.sample
+    end
   end
 
   def human_places_piece!(square)
@@ -537,10 +562,10 @@ class TTTGame
   def current_player_moves
     if human_turn?
       human_moves
-      @current_marker = @computer.marker
+      @current_marker = computer.marker
     else
       computer_moves
-      @current_marker = @human.marker
+      @current_marker = human.marker
     end
   end
 
