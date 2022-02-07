@@ -30,25 +30,6 @@ module GameIO
     prompt "Press Enter to continue."
     gets
   end
-
-  def ask_first_to_move
-    puts "Who is first to move? (H)uman, (C)omputer, or (R)andom?"
-    answer = nil
-    loop do
-      answer = gets.chomp.downcase
-      break if ["h", "human", "c", "computer", "r", "random"].include?(answer)
-      puts "Sorry, that's not a valid choice."
-    end
-    convert_answer_to_marker(answer)
-  end
-
-  def convert_answer_to_marker(answer)
-    case answer
-    when 'c', 'computer' then computer.marker
-    when 'h', 'human' then human.marker
-    when 'r', 'random' then [computer.marker, human.marker].sample
-    end
-  end
 end
 
 module Stringable
@@ -68,6 +49,27 @@ module Minimax
     squares.count { |_, sqr| sqr.marker == marker }
   end
 
+  def actions
+    unmarked_keys
+  end
+
+  def utility
+    # Returns 1 if human has won, -1 if computer has won, 0 if it's a draw
+    return nil unless terminal?
+    case winning_marker
+    when human_marker then 1
+    when computer_marker then -1
+    else 0
+    end
+  end
+
+  def result(action, first_to_move)
+    next_player = next_player(first_to_move)
+    board_copy = Marshal.load(Marshal.dump(self))
+    board_copy[action] = next_player
+    board_copy
+  end
+
   # Returns player who has the next turn on the board
   def next_player(first_to_move)
     human_marker_ct = marker_count(human_marker)
@@ -81,59 +83,39 @@ module Minimax
     end
   end
 
-  def result(action, first_to_move)
-    next_player = next_player(first_to_move)
-    board_copy = Marshal.load(Marshal.dump(self))
-    board_copy[action] = next_player
-    board_copy
-  end
-
-  def utility
-    # Returns 1 if human has won, -1 if computer has won, 0 if it's a draw
-    return nil unless terminal?
-    case winning_marker
-    when human_marker then 1
-    when computer_marker then -1
-    else 0
-    end
-  end
-
-  def max_value(board, first_to_move)
+  def max_value(mm_board, first_to_move)
     v = -Float::INFINITY
-    return board.utility if board.terminal?
-    board.actions.each do |action|
-      resulting_board = board.result(action, first_to_move)
+    return mm_board.utility if mm_board.terminal?
+    mm_board.actions.each do |action|
+      resulting_board = mm_board.result(action, first_to_move)
       v = [v, min_value(resulting_board, first_to_move)].max
     end
     v
   end
 
-  def min_value(board, first_to_move)
+  def min_value(mm_board, first_to_move)
     v = Float::INFINITY
-    return board.utility if board.terminal?
-    board.actions.each do |action|
-      resulting_board = board.result(action, first_to_move)
+    return mm_board.utility if mm_board.terminal?
+    mm_board.actions.each do |action|
+      resulting_board = mm_board.result(action, first_to_move)
       v = [v, max_value(resulting_board, first_to_move)].min
     end
     v
   end
 
   def minimax(first_to_move)
+    # Computer is minimizing player
     best_action = nil
     best_value = Float::INFINITY
     actions.each do |action|
       resulting_board = result(action, first_to_move)
-      if max_value(resulting_board, first_to_move) < best_value
-        best_value = max_value(resulting_board, first_to_move)
-        # p "#{action}, #{best_value}"
+      min_val = max_value(resulting_board, first_to_move)
+      if min_val < best_value
+        best_value = min_val
         best_action = action
       end
     end
     best_action
-  end
-
-  def actions
-    unmarked_keys
   end
 end
 
@@ -184,7 +166,7 @@ class Board
 
   def someone_won?
     !!winning_marker
-  end
+  end  
 
   def middle_square_open?
     unmarked_keys.include?(5)
@@ -598,6 +580,25 @@ class TTTGame
     end
 
     answer == 'y'
+  end
+
+  def ask_first_to_move
+    puts "Who is first to move? (H)uman, (C)omputer, or (R)andom?"
+    answer = nil
+    loop do
+      answer = gets.chomp.downcase
+      break if ["h", "human", "c", "computer", "r", "random"].include?(answer)
+      puts "Sorry, that's not a valid choice."
+    end
+    convert_answer_to_marker(answer)
+  end
+
+  def convert_answer_to_marker(answer)
+    case answer
+    when 'c', 'computer' then computer.marker
+    when 'h', 'human' then human.marker
+    when 'r', 'random' then [computer.marker, human.marker].sample
+    end
   end
 
   def update_score
