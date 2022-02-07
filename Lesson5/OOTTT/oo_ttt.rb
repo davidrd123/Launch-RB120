@@ -26,114 +26,12 @@ module GameIO
     system 'clear'
   end
 
-  def clear_screen_and_display_board
-    clear
-    display_board
-  end
-
-  def display_board
-    puts "#{human.name} is #{human.marker}. #{computer.name} is #{computer.marker}"
-    puts ""
-    board.draw
-  end
-
-  def display_welcome_message
-    welcome = Phrase.new('welcome', 0.75)
-    to = Phrase.new('to', 0.75)
-    tic = Phrase.new('tic ___ ___', 0.4)
-    tictac = Phrase.new('tic tac ___', 0.4)
-    tictactoe = Phrase.new('tic tac toe', 0.4)
-    full_message = [welcome, to, tic, tictac, tictactoe]
-    full_message.each do |phrase|
-      clear
-      phrase.display_center
-    end
-    puts
-    prompt "Press Enter to continue."
-    gets
-    clear
-  end
-
-  def display_tutorial
-    clear
-    display_tutorial_board
-    puts <<-MSG
-    Players take turns marking a square. 
-    The first player to mark 3 squares in a row wins the match.
-    The first player to win 5 matches wins the game.
-    To mark a square, enter the number of the square you'd like to mark.
-    MSG
+  def enter_to_continue
     prompt "Press Enter to continue."
     gets
   end
 
-  def display_tutorial_board
-    tut_board = Board.new
-    tut_board.tutorial
-    tut_board.draw
-  end
-
-  def display_goodbye_message
-    display_final_results
-    puts "Thanks for playing Tic Tac Toe! Goodbye!"
-  end
-
-  def display_play_again_message
-    prompt "Let's play again!"
-    prompt ""
-  end
-
-  def display_game_result
-    clear_screen_and_display_board
-
-    case board.winning_marker
-    when human.marker
-      puts "You won!"
-    when computer.marker
-      puts "Computer won!"
-    else
-      puts "It's a tie!"
-    end
-  end
-
-  def display_final_results
-    overall_winner = score.game_overall_winner
-    case overall_winner
-    when nil then puts "No overall winner"
-    when :human then puts "Human is overall winner"
-    when :computer then puts "Computer is overall winner"
-    end
-    display_scoreboard
-  end
-
-  def display_scoreboard
-    puts "#{human.name}: #{score.human}"
-    puts "#{computer.name}: #{score.computer}"
-  end
-
-  def ask_player_name(which_player)
-    case which_player
-    when :human then prompt "What's your name?"
-    when :computer then prompt "What's the computer's name?"
-    end
-    player_name = nil
-    loop do
-      player_name = gets.chomp
-      break unless player_name.delete(' ').empty?
-    end
-    player_name
-  end
-
-  def ask_player_marker
-    marker = nil
-    loop do
-      prompt "What marker would you like to use?"
-      marker = gets.chomp
-      break if valid_marker?(marker)
-      puts "Sorry, that's not a valid marker."
-    end
-    marker
-  end
+  
 
   def ask_first_to_move
     puts "Who is first to move? (H)uman, (C)omputer, or (R)andom?"
@@ -154,22 +52,10 @@ module GameIO
     end
   end
 
-  def valid_marker?(marker)
-    marker.length == 1 && marker != computer.marker && marker != ' '
-  end
+  
+end
 
-  def play_again?
-    answer = nil
-    loop do
-      prompt "Would you like to play again? (y/n)"
-      answer = gets.chomp.downcase
-      break if %w(y n).include? answer
-      prompt "Sorry, must be y or n"
-    end
-
-    answer == 'y'
-  end
-
+module Stringable
   def joinor(array, delimiter=', ', final_word='or')
     case array.length
     when 0 then ''
@@ -244,6 +130,7 @@ module Minimax
       resulting_board = result(action, first_to_move)
       if max_value(resulting_board, first_to_move) < best_value
         best_value = max_value(resulting_board, first_to_move)
+        # p "#{action}, #{best_value}"
         best_action = action
       end
     end
@@ -346,6 +233,7 @@ class Board
   # rubocop:disable Metrics/AbcSize
   # rubocop:disable Metrics/MethodLength
   def draw
+    # binding.pry
     puts "     |     |     "
     puts "  #{@squares[1]}  |  #{@squares[2]}  |  #{@squares[3]}  "
     puts "     |     |     "
@@ -400,12 +288,79 @@ end
 
 class Player
   attr_accessor :marker, :name
+  attr_reader :board
 
-  def initialize(marker)
-    # maybe a "marker" to keep track of this player's symbol (ie, 'X' or 'O')
-    @marker = marker
-    @name = nil
+  def initialize(board)
+    @board = board
   end
+
+  def mark_square!(square)
+    # binding.pry
+    board[square] = marker
+  end
+
+  def to_s
+    name
+  end
+end
+
+class Human < Player
+  include Stringable
+  include GameIO
+
+  def initialize(board)
+    super
+    @name = ask_player_name
+    @marker = ask_player_marker
+  end
+
+  def move
+    prompt "Choose a square (#{joinor(board.unmarked_keys)}): "
+    square = nil
+    loop do
+      square = gets.chomp.to_i
+      break if board.unmarked_keys.include?(square)
+      puts "Sorry, that's not a valid choice."
+    end
+    mark_square!(square)
+  end
+
+  def ask_player_name
+    prompt "What's your name?"
+    player_name = nil
+    loop do
+      player_name = gets.chomp
+      break unless player_name.delete(' ').empty?
+    end
+    player_name
+  end
+
+  def ask_player_marker
+    marker = nil
+    loop do
+      prompt "What marker would you like to use?"
+      marker = gets.chomp
+      break if valid_marker?(marker)
+      puts "Sorry, that's not a valid marker."
+    end
+    marker
+  end
+
+  def valid_marker?(marker)
+    marker.length == 1 && marker != Computer::COMPUTER_MARKER && marker != ' '
+  end
+end
+
+class Computer < Player
+  COMPUTER_MARKER = "O"
+  COMPUTER_NAMES = ["Hal", "Colossus", "Ultron", "Skynet", "The Borg"]
+
+  def initialize(board)
+    super
+    @name = COMPUTER_NAMES.sample
+    @marker = COMPUTER_MARKER
+  end
+
 end
 
 class Score
@@ -441,21 +396,20 @@ class TTTGame
   include GameIO
 
   HUMAN_MARKER = "X"
-  COMPUTER_MARKER = "O"
-  COMPUTER_NAMES = ["Hal", "Colossus", "Ultron", "Skynet", "The Borg"]
 
   def initialize
-    @human = Player.new(HUMAN_MARKER)
-    @computer = Player.new(COMPUTER_MARKER)
     @board = Board.new
+    display_welcome_message
+    @human = Human.new(board)
+    @computer = Computer.new(board)
     @score = Score.new
-    @first_to_move = nil
-    @current_marker = nil
+    board.set_player_markers(human.marker, computer.marker)
+    @first_to_move = ask_first_to_move
+    @current_marker = first_to_move
   end
 
   def play
     clear
-    display_welcome_message
     setup_game
     display_tutorial
     main_game
@@ -467,12 +421,13 @@ class TTTGame
   attr_reader :board, :human, :computer, :score, :first_to_move
 
   def setup_game
-    @human.name = ask_player_name(:human)
-    @computer.name = COMPUTER_NAMES.sample
-    @human.marker = ask_player_marker
-    @board.set_player_markers(human.marker, computer.marker)
-    @first_to_move = ask_first_to_move
-    @current_marker = @first_to_move
+    # human.ask_player_name
+    # @computer.name = COMPUTER_NAMES.sample
+    # human.ask_player_marker
+    # @computer.marker = COMPUTER_MARKER
+    # @board.set_player_markers(human.marker, computer.marker)
+    # @first_to_move = ask_first_to_move
+    # @current_marker = @first_to_move
   end
 
   def main_game
@@ -502,7 +457,7 @@ class TTTGame
   end
 
   def human_turn?
-    @current_marker == @human.marker
+    @current_marker == human.marker
   end
 
   def human_moves
@@ -519,8 +474,8 @@ class TTTGame
 
   def computer_moves(logic = :minimax)
     puts "#{@computer.name} is thinking..."
-    sleep(0.5)
     computer_places_piece!(good_next_move(logic))
+    sleep(0.5)
   end
 
   def good_next_move(logic = :minimax)
@@ -561,12 +516,111 @@ class TTTGame
 
   def current_player_moves
     if human_turn?
-      human_moves
+      human.move
       @current_marker = computer.marker
     else
       computer_moves
       @current_marker = human.marker
     end
+  end
+
+  def clear_screen_and_display_board
+    clear
+    display_board
+  end
+
+  def display_board
+    puts "#{human.name} is #{human.marker}. #{computer.name} is #{computer.marker}"
+    puts ""
+    board.draw
+  end
+
+  def display_welcome_message
+    welcome = Phrase.new('welcome', 0.75)
+    to = Phrase.new('to', 0.75)
+    tic = Phrase.new('tic ___ ___', 0.4)
+    tictac = Phrase.new('tic tac ___', 0.4)
+    tictactoe = Phrase.new('tic tac toe', 0.4)
+    full_message = [welcome, to, tic, tictac, tictactoe]
+    display_phrases(full_message)
+    puts
+    enter_to_continue
+    clear
+  end
+
+  def display_phrases(phrases)
+    phrases.each do |phrase|
+      clear
+      phrase.display_center
+    end
+  end
+
+  def display_tutorial
+    clear
+    puts "Game Squares:"
+    display_tutorial_board
+    puts <<-MSG
+    Players take turns marking a square. 
+    The first player to mark 3 squares in a row wins the match.
+    The first player to win 5 matches wins the game.
+    To mark a square, enter the number of the square you'd like to mark.
+    MSG
+    enter_to_continue
+  end
+
+  def display_tutorial_board
+    tut_board = Board.new
+    tut_board.tutorial
+    tut_board.draw
+  end
+
+  def display_goodbye_message
+    display_final_results
+    puts "Thanks for playing Tic Tac Toe! Goodbye!"
+  end
+
+  def display_play_again_message
+    prompt "Let's play again!"
+    prompt ""
+  end
+
+  def display_game_result
+    clear_screen_and_display_board
+    case board.winning_marker
+    when human.marker
+      puts "You won!"
+    when computer.marker
+      puts "Computer won!"
+    else
+      puts "It's a tie!"
+    end
+  end
+
+  def display_final_results
+    overall_winner = score.game_overall_winner
+    case overall_winner
+    when nil then puts "No overall winner"
+    when :human then puts "Human is overall winner"
+    when :computer then puts "Computer is overall winner"
+    end
+    display_scoreboard
+  end
+
+  def display_scoreboard
+    puts "#{human.name}: #{score.human}"
+    puts "#{computer.name}: #{score.computer}"
+  end
+
+  def play_again?
+    answer = nil
+    loop do
+      prompt "Would you like to play again? (y/n)"
+      answer = gets.chomp.downcase
+      break if %w(y n).include? answer
+      prompt "Sorry, must be y or n"
+    end
+
+    answer == 'y'
   end
 
   def update_score
@@ -583,7 +637,6 @@ class TTTGame
     @current_marker = @first_to_move
     clear
   end
-  
 end
 
 # we'll kick off the game like this
