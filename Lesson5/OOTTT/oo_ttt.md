@@ -5,7 +5,7 @@
 
 # Board
 - State:
-- Interface: set_player_markers
+- Interface: set_player_markers, terminal?, actions, unmarked_keys, 
 - Collaborators:
  
 
@@ -18,9 +18,24 @@
 # Player
 - State: @marker, @name
 - Interface: marker, marker=, name, name=
-- Collaborators:
+- Collaborators: Board
+
+# Computer
+- State: @marker, @name, @difficulty
+- Interface: move!, difficulty, difficulty=
+- Collaborators: Board
+
+# Human
+- State: @marker, @name
+- Interface: move!, 
+- Collaborators: Board
 
 # Score
-- State:
-- Interface:
+- State: human, computer
+- Interface: player_won_game, overall_winner?, game_overall_winner, 
 - Collaborators:
+
+
+|1|2|3|
+|4|5|6|
+|7|8|9|

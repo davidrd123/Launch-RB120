@@ -10,6 +10,10 @@ class Letter
     make_letter(letter.upcase)
   end
 
+  def get_row(row)
+    @grid[row]
+  end
+
   def display
     @grid.each do |row|
       row.each do |cell|
@@ -23,10 +27,11 @@ class Letter
     @grid.map(&:join).join("\n")
   end
 
-  def get_row(row)
-    @grid[row]
-  end
+  private
 
+  # rubocop:disable Metrics/AbcSize
+  # rubocop:disable Metrics/MethodLength
+  # rubocop:disable Metrics/CyclomaticComplexity
   def make_letter(letter)
     case letter
     when 'A'
@@ -82,6 +87,9 @@ class Letter
       fill_bottom_middle_col
     end
   end
+  # rubocop:enable Metrics/AbcSize
+  # rubocop:enable Metrics/MethodLength
+  # rubocop:enable Metrics/CyclomaticComplexity
 
   def set_cell(x, y, char = CHAR)
     @grid[x][y] = char
@@ -150,7 +158,7 @@ class Letter
   end
 
   def set_row_to_value(row, value)
-    @grid[row].map! { |cell| cell = value }
+    @grid[row].map! { |_| value }
   end
 
   def fill_top_row(char = CHAR)
@@ -178,6 +186,8 @@ class Word
   def get_row(row)
     @char_grid[row]
   end
+
+  private
 
   def grid_width
     @char_grid.first.size
@@ -228,44 +238,3 @@ class Phrase
     sleep(@delay)
   end
 end
-
-# letters = ['A', 'C', 'E', 'I', 'O', 'T']
-# letters.each do |letter|
-#   letter = Letter.new(letter)
-#   letter.display
-#   puts
-# end
-
-# A = Letter.new('A')
-# tic = Word.new('TIC')
-# tictactoe = Phrase.new('TIC TAC TOE')
-# puts(tictactoe.to_s.center(80))
-
-# empty_letter = Letter.new('_')
-# binding.pry
-# you = Phrase.new('YOU')
-# you.display_center
-
-# won = Phrase.new('WON')
-# won.display_center
-
-# welcome = Phrase.new('welcome')
-# to = Phrase.new('to')
-# tic = Phrase.new('tic ___ ___')
-# tictac = Phrase.new('tic tac ___')
-# tictactoe = Phrase.new('tic tac toe')
-# system 'clear'
-# welcome.display_center
-# sleep(1)
-# system 'clear'
-# to.display_center
-# sleep(1)
-# system 'clear'
-# tic.display_center
-# sleep(0.5)
-# system 'clear'
-# tictac.display_center
-# sleep(0.5)
-# system 'clear'
-# tictactoe.display_center
-

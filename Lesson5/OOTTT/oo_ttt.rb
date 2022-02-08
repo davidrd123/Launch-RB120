@@ -30,6 +30,10 @@ module GameIO
     prompt "Press Enter to continue."
     gets
   end
+
+  def print_separator
+    puts "-" * 20
+  end
 end
 
 module Stringable
@@ -124,20 +128,12 @@ class Board
     someone_won? || full?
   end
 
-  def marker_count(marker)
-    squares.count { |_, sqr| sqr.marker == marker }
-  end
-
   def actions
     unmarked_keys
   end
 
   def unmarked_keys
     @squares.keys.select { |key| @squares[key].unmarked? }
-  end
-
-  def full?
-    unmarked_keys.empty?
   end
 
   def empty?
@@ -160,19 +156,6 @@ class Board
     board_copy
   end
 
-  # Returns player who has the next turn on the board
-  def next_player_marker
-    human_marker_ct = marker_count(human_marker)
-    computer_marker_ct = marker_count(computer_marker)
-    if human_marker_ct == computer_marker_ct
-      first_to_move
-    elsif human_marker_ct > computer_marker_ct
-      computer_marker
-    else
-      human_marker
-    end
-  end
-
   def someone_won?
     !!winning_marker
   end
@@ -186,7 +169,7 @@ class Board
   end
 
   def immediate_opportunity?
-    !!at_risk_square( computer_marker)
+    !!at_risk_square(computer_marker)
   end
 
   # Finds the location at risk for the player denoted by player_marker
@@ -203,9 +186,9 @@ class Board
   # returns winning marker or nil
   def winning_marker
     WINNING_LINES.each do |line|
-      squares = @squares.values_at(*line)
-      if three_identical_markers?(squares)
-        return squares.first.marker
+      squares_in_line = @squares.values_at(*line)
+      if three_identical_markers?(squares_in_line)
+        return squares_in_line.first.marker
       end
     end
     nil
@@ -222,24 +205,48 @@ class Board
   # rubocop:disable Metrics/AbcSize
   # rubocop:disable Metrics/MethodLength
   def draw
-    # binding.pry
-    puts "     |     |     "
-    puts "  #{@squares[1]}  |  #{@squares[2]}  |  #{@squares[3]}  "
-    puts "     |     |     "
-    puts "-----+-----+-----"
-    puts "     |     |     "
-    puts "  #{@squares[4]}  |  #{@squares[5]}  |  #{@squares[6]}  "
-    puts "     |     |     "
-    puts "-----+-----+-----"
-    puts "     |     |     "
-    puts "  #{@squares[7]}  |  #{@squares[8]}  |  #{@squares[9]}  "
-    puts "     |     |     "
+    ref_board = (1..9).each_slice(3)
+                      .map { |row| " " * 3 + "|" + row.join("|") + "|" }
+    divider = " " * 3 + "--+-+--"
+    padding = " " * 10
+    puts padding + "     |     |     "
+    puts padding + "  #{@squares[1]}  |  #{@squares[2]}  |  #{@squares[3]}  "
+    puts padding + "     |     |     "
+    puts padding + "-----+-----+-----"
+    puts padding + "     |     |     "
+    puts padding + "  #{@squares[4]}  |  #{@squares[5]}  |  #{@squares[6]}  "
+    puts padding + "     |     |     " + ref_board[0]
+    puts padding + "-----+-----+-----" + divider
+    puts padding + "     |     |     " + ref_board[1]
+    puts padding + "  #{@squares[7]}  |  #{@squares[8]}  |  #{@squares[9]}  " + divider
+    puts padding + "     |     |     " + ref_board[2]
     puts ""
   end
   # rubocop:enable Metrics/AbcSize
   # rubocop:enable Metrics/MethodLength
 
   private
+
+  def full?
+    unmarked_keys.empty?
+  end
+
+  # Returns player who has the next turn on the board
+  def next_player_marker
+    human_marker_ct = marker_count(human_marker)
+    computer_marker_ct = marker_count(computer_marker)
+    if human_marker_ct == computer_marker_ct
+      first_to_move
+    elsif human_marker_ct > computer_marker_ct
+      computer_marker
+    else
+      human_marker
+    end
+  end
+
+  def marker_count(marker)
+    squares.count { |_, sqr| sqr.marker == marker }
+  end
 
   # return the marker if three in a row, nil otherwise
   def three_identical_markers?(squares)
@@ -284,12 +291,14 @@ class Player
     @board = board
   end
 
-  def mark_square!(square)
-    board[square] = marker
-  end
-
   def to_s
     name
+  end
+
+  private
+
+  def mark_square!(square)
+    board[square] = marker
   end
 end
 
@@ -313,6 +322,8 @@ class Human < Player
     end
     mark_square!(square)
   end
+
+  private
 
   def ask_player_name
     prompt "What's your name?"
@@ -360,6 +371,8 @@ class Computer < Player
     sleep(0.5)
   end
 
+  private
+
   def next_move
     case difficulty
     when :easy then random_move
@@ -396,7 +409,7 @@ end
 class Score
   WINNING_SCORE = 5
 
-  attr_accessor :computer, :human
+  attr_accessor :human, :computer
 
   def initialize
     @computer = 0
@@ -433,14 +446,6 @@ class TTTGame
     setup_game
   end
 
-  def setup_game
-    board.set_player_markers(human.marker, computer.marker)
-    @first_to_move = ask_first_to_move
-    board.first_to_move = first_to_move
-    @current_marker = first_to_move
-    computer.difficulty = ask_game_difficulty
-  end
-
   def play
     clear
     display_tutorial
@@ -452,6 +457,12 @@ class TTTGame
 
   attr_reader :board, :human, :computer, :score, :first_to_move, :current_marker
 
+  def setup_game
+    board.set_player_markers(human.marker, computer.marker)
+    ask_first_to_move
+    computer.difficulty = ask_game_difficulty
+  end
+
   def main_game
     loop do
       clear_screen_and_display_board
@@ -461,7 +472,7 @@ class TTTGame
       display_scoreboard
       break if overall_winner? || !play_again?
       reset
-      display_play_again_message
+      ask_first_to_move
     end
   end
 
@@ -499,8 +510,8 @@ class TTTGame
   def display_board
     human_is = "#{human.name} is #{human.marker}."
     computer_is = "#{computer.name} is #{computer.marker}."
-    puts  "#{human_is} #{computer_is}"
-    puts ""
+    puts "#{human_is} #{computer_is}"
+    display_scoreboard(:top)
     board.draw
   end
 
@@ -559,7 +570,7 @@ class TTTGame
     when human.marker
       puts "You won!"
     when computer.marker
-      puts "Computer won!"
+      puts "#{computer.name} won!"
     else
       puts "It's a tie!"
     end
@@ -572,12 +583,21 @@ class TTTGame
     when :human then puts "Human is overall winner"
     when :computer then puts "Computer is overall winner"
     end
-    display_scoreboard
+    clear
+    display_scoreboard(:bottom)
   end
 
-  def display_scoreboard
-    puts "#{human.name}: #{score.human}"
-    puts "#{computer.name}: #{score.computer}"
+  def display_scoreboard(loc = :top)
+    print_separator if loc == :bottom
+    human_score = "#{human.name}: #{score.human}"
+    computer_score = "#{computer.name}: #{score.computer}"
+    case loc
+    when :top 
+      puts "#{human_score} #{computer_score}"
+    when :bottom
+      puts "#{human_score} #{computer_score}"
+    end
+    print_separator if loc == :bottom
   end
 
   def play_again?
@@ -600,7 +620,14 @@ class TTTGame
       break if ["h", "human", "c", "computer", "r", "random"].include?(answer)
       puts "Sorry, that's not a valid choice."
     end
-    convert_answer_to_marker(answer)
+    new_first_to_move = convert_answer_to_marker(answer)
+    assign_first_to_move(new_first_to_move)
+  end
+
+  def assign_first_to_move(new_first_to_move)
+    @first_to_move = new_first_to_move
+    board.first_to_move = new_first_to_move
+    @current_marker = new_first_to_move
   end
 
   def convert_answer_to_marker(answer)
