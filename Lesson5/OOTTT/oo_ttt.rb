@@ -45,136 +45,59 @@ module Stringable
 end
 
 module Minimax
-  def marker_count(marker)
-    squares.count { |_, sqr| sqr.marker == marker }
-  end
+  ALPHA = -1
+  BETA = 1
+  MAX_VALUE = 100
+  MIN_VALUE = -100
 
-  def actions
-    unmarked_keys
-  end
-
-  def utility
-    # Returns 1 if human has won, -1 if computer has won, 0 if it's a draw
-    return nil unless terminal?
-    case winning_marker
-    when human_marker then 1
-    when computer_marker then -1
-    else 0
-    end
-  end
-
-  def result(action, first_to_move)
-    next_player = next_player(first_to_move)
-    board_copy = Marshal.load(Marshal.dump(self))
-    board_copy[action] = next_player
-    board_copy
-  end
-
-  # Returns player who has the next turn on the board
-  def next_player(first_to_move)
-    human_marker_ct = marker_count(human_marker)
-    computer_marker_ct = marker_count(computer_marker)
-    if human_marker_ct == computer_marker_ct
-      first_to_move
-    elsif human_marker_ct > computer_marker_ct
-      computer_marker
-    else
-      human_marker
-    end
-  end
-
-  def max_value(mm_board, first_to_move)
-    v = -Float::INFINITY
+  def max_value_ab(mm_board, alpha, beta)
+    v = MIN_VALUE
     return mm_board.utility if mm_board.terminal?
     mm_board.actions.each do |action|
-      resulting_board = mm_board.result(action, first_to_move)
-      v = [v, min_value(resulting_board, first_to_move)].max
-    end
-    v
-  end
-
-  def max_value_ab(mm_board, alpha, beta, first_to_move)
-    v = -Float::INFINITY
-    return mm_board.utility if mm_board.terminal?
-    mm_board.actions.each do |action|
-      resulting_board = mm_board.result(action, first_to_move)
-      v = [v, min_value_ab(resulting_board, alpha, beta, first_to_move)].max
+      resulting_board = mm_board.result(action)
+      v = [v, min_value_ab(resulting_board, alpha, beta)].max
       return v if v >= beta
       alpha = [alpha, v].max
     end
     v
   end
 
-  def min_value(mm_board, first_to_move)
-    v = Float::INFINITY
+  def min_value_ab(mm_board, alpha, beta)
+    v = MAX_VALUE
     return mm_board.utility if mm_board.terminal?
     mm_board.actions.each do |action|
-      resulting_board = mm_board.result(action, first_to_move)
-      v = [v, max_value(resulting_board, first_to_move)].min
-    end
-    v
-  end
-
-  def min_value_ab(mm_board, alpha, beta, first_to_move)
-    v = Float::INFINITY
-    return mm_board.utility if mm_board.terminal?
-    mm_board.actions.each do |action|
-      resulting_board = mm_board.result(action, first_to_move)
-      v = [v, max_value_ab(resulting_board, alpha, beta, first_to_move)].min
+      resulting_board = mm_board.result(action)
+      v = [v, max_value_ab(resulting_board, alpha, beta)].min
       return v if v <= alpha
       beta = [beta, v].min
     end
     v
   end
 
-  def minimax(first_to_move)
+  def minimax_ab(mm_board)
     # Computer is minimizing player
-    p "Inside minimax"
     best_action = nil
-    best_value = Float::INFINITY
-    actions.each do |action|
-      resulting_board = result(action, first_to_move)
-      max_val = max_value(resulting_board, first_to_move)
+    best_value = MAX_VALUE
+    mm_board.actions.each do |action|
+      max_val = max_value_ab(mm_board.result(action), ALPHA, BETA)
       if max_val < best_value
         best_value = max_val
         best_action = action
+        # p "#{best_value} #{best_action}"
       end
     end
     best_action
   end
-
-  def minimax_ab(first_to_move, alpha=-Float::INFINITY, beta=Float::INFINITY)
-    p "Inside minimax_ab"
-    # Computer is minimizing player
-    best_action = nil
-    best_value = Float::INFINITY
-    actions.each do |action|
-      resulting_board = result(action, first_to_move)
-      max_val = max_value_ab(resulting_board, alpha, beta, first_to_move)
-      if max_val < best_value
-        best_value = max_val
-        best_action = action
-        p "#{best_value} #{best_action}"
-      end
-      beta = [beta, best_value].min
-      return best_action if best_value <= alpha
-    end
-    best_action
-  end
-
-  def best_move(first_to_move)
-    minimax_ab(first_to_move, -Float::INFINITY, Float::INFINITY)
-  end
-
 end
 
 class Board
-  include Minimax
+  # include Minimax
   attr_accessor :squares, :human_marker, :computer_marker, :first_to_move
 
   WINNING_LINES = [[1, 2, 3], [4, 5, 6], [7, 8, 9]] + # rows
                   [[1, 4, 7], [2, 5, 8], [3, 6, 9]] + # cols
                   [[1, 5, 9], [3, 5, 7]]              # diagonals
+  CORNERS = [1, 3, 7, 9]
 
   def initialize
     @squares = {}
@@ -201,6 +124,14 @@ class Board
     someone_won? || full?
   end
 
+  def marker_count(marker)
+    squares.count { |_, sqr| sqr.marker == marker }
+  end
+
+  def actions
+    unmarked_keys
+  end
+
   def unmarked_keys
     @squares.keys.select { |key| @squares[key].unmarked? }
   end
@@ -213,9 +144,38 @@ class Board
     @squares.values.all?(&:unmarked?)
   end
 
+  def utility
+    # Returns 1 if human has won, -1 if computer has won, 0 if it's a draw
+    return nil unless terminal?
+    case winning_marker
+    when human_marker then 1
+    when computer_marker then -1
+    else 0
+    end
+  end
+
+  def result(action)
+    board_copy = Marshal.load(Marshal.dump(self))
+    board_copy[action] = next_player_marker
+    board_copy
+  end
+
+  # Returns player who has the next turn on the board
+  def next_player_marker
+    human_marker_ct = marker_count(human_marker)
+    computer_marker_ct = marker_count(computer_marker)
+    if human_marker_ct == computer_marker_ct
+      first_to_move
+    elsif human_marker_ct > computer_marker_ct
+      computer_marker
+    else
+      human_marker
+    end
+  end
+
   def someone_won?
     !!winning_marker
-  end  
+  end
 
   def middle_square_open?
     unmarked_keys.include?(5)
@@ -324,7 +284,6 @@ class Player
   end
 
   def mark_square!(square)
-    # binding.pry
     board[square] = marker
   end
 
@@ -343,7 +302,7 @@ class Human < Player
     @marker = ask_player_marker
   end
 
-  def move
+  def move!
     prompt "Choose a square (#{joinor(board.unmarked_keys)}): "
     square = nil
     loop do
@@ -381,6 +340,7 @@ class Human < Player
 end
 
 class Computer < Player
+  include Minimax
   COMPUTER_MARKER = "O"
   COMPUTER_NAMES = ["Hal", "Colossus", "Ultron", "Skynet", "The Borg"]
 
@@ -390,38 +350,27 @@ class Computer < Player
     @marker = COMPUTER_MARKER
   end
 
-  def move(logic = :minimax_ab)
+  def move!(logic = :minimax_ab)
     puts "#{name} is thinking..."
     mark_square!(good_next_move(logic))
     sleep(0.5)
   end
 
   def good_next_move(logic)
-    if logic == :minimax
-      minimax_move
-    elsif logic == :minimax_ab
+    if logic == :minimax_ab
       minimax_ab_move
     else
       heuristic_move
     end
   end
 
-  def minimax_move
-    if board.empty?
-      1
-    else
-      board.minimax(board.first_to_move)
-    end
-  end
-
   def minimax_ab_move
     if board.empty?
-      1
+      Board::CORNERS.sample
     else
-      board.minimax_ab(board.first_to_move)
+      minimax_ab(board)
     end
   end
-
 
   def heuristic_move
     if board.immediate_opportunity?
@@ -447,7 +396,6 @@ class Score
   end
 
   def overall_winner?
-    # computer == WINNING_SCORE || human == WINNING_SCORE
     !!game_overall_winner
   end
 
@@ -476,7 +424,7 @@ class TTTGame
     @score = Score.new
     board.set_player_markers(human.marker, computer.marker)
     @first_to_move = ask_first_to_move
-    board.first_to_move = @first_to_move
+    board.first_to_move = first_to_move
     @current_marker = first_to_move
   end
 
@@ -504,8 +452,7 @@ class TTTGame
 
   def main_game
     loop do
-      clear
-      display_board
+      clear_screen_and_display_board
       player_move
       display_game_result
       update_score
@@ -534,11 +481,10 @@ class TTTGame
 
   def current_player_moves
     if human_turn?
-      human.move
+      human.move!
       @current_marker = computer.marker
     else
-      # computer_moves
-      computer.move
+      computer.move!
       @current_marker = human.marker
     end
   end
@@ -677,14 +623,5 @@ class TTTGame
   end
 end
 
-# we'll kick off the game like this
 game = TTTGame.new
-# game.board[1] = 'X'
-# game.board[3] = 'O'
-# game.board[5] = 'X'
-# binding.pry
 game.play
-
-
-
-# binding.pry
