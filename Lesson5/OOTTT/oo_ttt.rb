@@ -93,6 +93,18 @@ module Minimax
     v
   end
 
+  def max_value_ab(mm_board, alpha, beta, first_to_move)
+    v = -Float::INFINITY
+    return mm_board.utility if mm_board.terminal?
+    mm_board.actions.each do |action|
+      resulting_board = mm_board.result(action, first_to_move)
+      v = [v, min_value_ab(resulting_board, alpha, beta, first_to_move)].max
+      return v if v >= beta
+      alpha = [alpha, v].max
+    end
+    v
+  end
+
   def min_value(mm_board, first_to_move)
     v = Float::INFINITY
     return mm_board.utility if mm_board.terminal?
@@ -103,20 +115,57 @@ module Minimax
     v
   end
 
+  def min_value_ab(mm_board, alpha, beta, first_to_move)
+    v = Float::INFINITY
+    return mm_board.utility if mm_board.terminal?
+    mm_board.actions.each do |action|
+      resulting_board = mm_board.result(action, first_to_move)
+      v = [v, max_value_ab(resulting_board, alpha, beta, first_to_move)].min
+      return v if v <= alpha
+      beta = [beta, v].min
+    end
+    v
+  end
+
   def minimax(first_to_move)
     # Computer is minimizing player
+    p "Inside minimax"
     best_action = nil
     best_value = Float::INFINITY
     actions.each do |action|
       resulting_board = result(action, first_to_move)
-      min_val = max_value(resulting_board, first_to_move)
-      if min_val < best_value
-        best_value = min_val
+      max_val = max_value(resulting_board, first_to_move)
+      if max_val < best_value
+        best_value = max_val
         best_action = action
       end
     end
     best_action
   end
+
+  def minimax_ab(first_to_move, alpha=-Float::INFINITY, beta=Float::INFINITY)
+    p "Inside minimax_ab"
+    # Computer is minimizing player
+    best_action = nil
+    best_value = Float::INFINITY
+    actions.each do |action|
+      resulting_board = result(action, first_to_move)
+      max_val = max_value_ab(resulting_board, alpha, beta, first_to_move)
+      if max_val < best_value
+        best_value = max_val
+        best_action = action
+        p "#{best_value} #{best_action}"
+      end
+      beta = [beta, best_value].min
+      return best_action if best_value <= alpha
+    end
+    best_action
+  end
+
+  def best_move(first_to_move)
+    minimax_ab(first_to_move, -Float::INFINITY, Float::INFINITY)
+  end
+
 end
 
 class Board
@@ -341,15 +390,17 @@ class Computer < Player
     @marker = COMPUTER_MARKER
   end
 
-  def move(logic = :minimax)
+  def move(logic = :minimax_ab)
     puts "#{name} is thinking..."
     mark_square!(good_next_move(logic))
     sleep(0.5)
   end
 
-  def good_next_move(logic = :minimax)
+  def good_next_move(logic)
     if logic == :minimax
       minimax_move
+    elsif logic == :minimax_ab
+      minimax_ab_move
     else
       heuristic_move
     end
@@ -362,6 +413,15 @@ class Computer < Player
       board.minimax(board.first_to_move)
     end
   end
+
+  def minimax_ab_move
+    if board.empty?
+      1
+    else
+      board.minimax_ab(board.first_to_move)
+    end
+  end
+
 
   def heuristic_move
     if board.immediate_opportunity?
