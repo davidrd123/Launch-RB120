@@ -182,11 +182,11 @@ class Board
   end
 
   def immediate_threat?
-    !!at_risk_square(@human_marker)
+    !!at_risk_square(human_marker)
   end
 
   def immediate_opportunity?
-    !!at_risk_square(@computer_marker)
+    !!at_risk_square( computer_marker)
   end
 
   # Finds the location at risk for the player denoted by player_marker
@@ -249,16 +249,17 @@ class Board
 
   def two_marked_one_empty?(squares, player_marker)
     markers = squares.filter(&:marked?).map(&:marker)
-    markers.size == 2 && markers.uniq.size == 1 && markers.first == player_marker
+    markers.size == 2 && markers.uniq.size == 1 &&
+      markers.first == player_marker
   end
 end
 
 class Square
-  INITIAL_MARKER = ' '
+  EMPTY_MARKER = ' '
 
   attr_accessor :marker
 
-  def initialize(marker=INITIAL_MARKER)
+  def initialize(marker=EMPTY_MARKER)
     @marker = marker
   end
 
@@ -267,11 +268,11 @@ class Square
   end
 
   def unmarked?
-    marker == INITIAL_MARKER
+    marker == EMPTY_MARKER
   end
 
   def marked?
-    marker != INITIAL_MARKER
+    marker != EMPTY_MARKER
   end
 end
 
@@ -344,27 +345,30 @@ class Computer < Player
   COMPUTER_MARKER = "O"
   COMPUTER_NAMES = ["Hal", "Colossus", "Ultron", "Skynet", "The Borg"]
 
+  attr_accessor :difficulty
+
   def initialize(board)
     super
     @name = COMPUTER_NAMES.sample
     @marker = COMPUTER_MARKER
+    @difficulty = nil
   end
 
-  def move!(logic = :minimax_ab)
+  def move!
     puts "#{name} is thinking..."
-    mark_square!(good_next_move(logic))
+    mark_square!(next_move)
     sleep(0.5)
   end
 
-  def good_next_move(logic)
-    if logic == :minimax_ab
-      minimax_ab_move
-    else
-      heuristic_move
+  def next_move
+    case difficulty
+    when :easy then random_move
+    when :medium then heuristic_move
+    when :hard then minimax_move
     end
   end
 
-  def minimax_ab_move
+  def minimax_move
     if board.empty?
       Board::CORNERS.sample
     else
@@ -383,6 +387,10 @@ class Computer < Player
       board.unmarked_keys.sample
     end
   end
+end
+
+def random_move
+  board.actions.sample
 end
 
 class Score
@@ -422,15 +430,19 @@ class TTTGame
     @human = Human.new(board)
     @computer = Computer.new(board)
     @score = Score.new
+    setup_game
+  end
+
+  def setup_game
     board.set_player_markers(human.marker, computer.marker)
     @first_to_move = ask_first_to_move
     board.first_to_move = first_to_move
     @current_marker = first_to_move
+    computer.difficulty = ask_game_difficulty
   end
 
   def play
     clear
-    setup_game
     display_tutorial
     main_game
     display_goodbye_message
@@ -438,17 +450,7 @@ class TTTGame
 
   private
 
-  attr_reader :board, :human, :computer, :score, :first_to_move
-
-  def setup_game
-    # human.ask_player_name
-    # @computer.name = COMPUTER_NAMES.sample
-    # human.ask_player_marker
-    # @computer.marker = COMPUTER_MARKER
-    # @board.set_player_markers(human.marker, computer.marker)
-    # @first_to_move = ask_first_to_move
-    # @current_marker = @first_to_move
-  end
+  attr_reader :board, :human, :computer, :score, :first_to_move, :current_marker
 
   def main_game
     loop do
@@ -495,7 +497,9 @@ class TTTGame
   end
 
   def display_board
-    puts "#{human.name} is #{human.marker}. #{computer.name} is #{computer.marker}"
+    human_is = "#{human.name} is #{human.marker}."
+    computer_is = "#{computer.name} is #{computer.marker}."
+    puts  "#{human_is} #{computer_is}"
     puts ""
     board.draw
   end
@@ -607,6 +611,25 @@ class TTTGame
     end
   end
 
+  def ask_game_difficulty
+    puts "What difficulty would you like to play at? (E)asy, (M)edium, (H)ard?"
+    answer = nil
+    loop do
+      answer = gets.chomp.downcase
+      break if ["e", "easy", "m", "medium", "h", "hard"].include?(answer)
+      puts "Sorry, that's not a valid choice."
+    end
+    convert_answer_to_difficulty(answer)
+  end
+
+  def convert_answer_to_difficulty(answer)
+    case answer
+    when "e", "easy" then :easy
+    when "m", "medium" then :medium
+    when "h", "hard" then :hard
+    end
+  end
+
   def update_score
     case board.winning_marker
     when human.marker
@@ -618,7 +641,7 @@ class TTTGame
 
   def reset
     board.reset
-    @current_marker = @first_to_move
+    @current_marker = first_to_move
     clear
   end
 end
