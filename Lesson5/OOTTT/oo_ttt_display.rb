@@ -64,11 +64,17 @@ class Letter
       fill_left_col
       fill_left_diag
       fill_right_col
-    when 'O'
+    when 'O', '0'
       fill_left_col
       fill_right_col
       fill_top_row
       fill_bottom_row
+    when 'S'
+      fill_top_row
+      fill_middle_row
+      fill_bottom_row
+      fill_top_left_col
+      fill_bottom_right_col
     when 'T'
       fill_top_row
       fill_middle_col
@@ -85,6 +91,43 @@ class Letter
       fill_top_left_diag
       fill_top_right_diag
       fill_bottom_middle_col
+    when '1'
+      fill_middle_col
+      fill_cell(1, WIDTH / 2 - 1)
+      fill_cell(2, WIDTH / 2 - 2)
+      fill_bottom_row
+    when '2'
+      fill_top_row
+      fill_right_diag
+      fill_bottom_row
+      clear_cell(0, 0)
+      clear_cell(0, WIDTH - 1)
+      clear_cell(0, WIDTH - 2)
+      fill_cell(1, 0)
+    when '3'
+      fill_top_row
+      fill_middle_row
+      fill_bottom_row
+      fill_right_col
+    when '4'
+      fill_top_left_col
+      fill_middle_row
+      fill_right_col
+    when '5'
+      fill_top_row
+      fill_middle_row
+      fill_bottom_row
+      fill_top_left_col
+      fill_bottom_right_col
+      clear_cell(HEIGHT - 1, WIDTH - 1)
+      clear_cell(HEIGHT / 2, WIDTH - 1)
+    when '-'
+      fill_middle_row
+      clear_cell(HEIGHT / 2, 0)
+      clear_cell(HEIGHT / 2, WIDTH - 1)
+    when '!'
+      fill_middle_col
+      clear_cell(HEIGHT - 2, WIDTH / 2)
     end
   end
   # rubocop:enable Metrics/AbcSize
@@ -93,6 +136,14 @@ class Letter
 
   def set_cell(x, y, char = CHAR)
     @grid[x][y] = char
+  end
+
+  def clear_cell(x, y)
+    set_cell(x, y, ' ')
+  end
+
+  def fill_cell(x, y)
+    set_cell(x, y, CHAR)
   end
 
   def get_cell(x, y)
@@ -109,6 +160,14 @@ class Letter
     set_col_to_value(0, char)
   end
 
+  def fill_top_left_col(char = CHAR)
+    @grid.each_with_index do |row, y|
+      row.each_with_index do |_, x|
+        @grid[y][x] = char if x == 0 && y < HEIGHT / 2
+      end
+    end
+  end
+
   def fill_middle_col(char = CHAR)
     set_col_to_value(WIDTH / 2, char)
   end
@@ -116,7 +175,7 @@ class Letter
   def fill_bottom_middle_col(char = CHAR)
     @grid.each_with_index do |row, y|
       row.each_with_index do |_, x|
-        @grid[y][x] = char if x == WIDTH / 2 && y > WIDTH / 2 - 1
+        @grid[y][x] = char if x == WIDTH / 2 && y > HEIGHT / 2 - 1
       end
     end
   end
@@ -125,10 +184,18 @@ class Letter
     set_col_to_value(WIDTH - 1, char)
   end
 
+  def fill_bottom_right_col(char = CHAR)
+    @grid.each_with_index do |row, y|
+      row.each_with_index do |_, x|
+        @grid[y][x] = char if x == WIDTH - 1 && y > HEIGHT / 2 - 1
+      end
+    end
+  end
+
   def fill_top_left_diag(char = CHAR)
     @grid.each_with_index do |row, y|
       row.each_with_index do |_, x|
-        @grid[y][x] = char if x == y && y < WIDTH / 2
+        @grid[y][x] = char if x == y && y < HEIGHT / 2
       end
     end
   end
@@ -144,7 +211,7 @@ class Letter
   def fill_top_right_diag(char = CHAR)
     @grid.each_with_index do |row, y|
       row.each_with_index do |_, x|
-        @grid[y][x] = char if x == WIDTH - 1 - y && y < WIDTH / 2
+        @grid[y][x] = char if x == WIDTH - 1 - y && y < HEIGHT / 2
       end
     end
   end
@@ -238,3 +305,9 @@ class Phrase
     sleep(@delay)
   end
 end
+
+# you_lost = Phrase.new('You lost!')
+# you_lost.display_center
+
+score = Phrase.new('0-1-2-3-4-5')
+score.display_center

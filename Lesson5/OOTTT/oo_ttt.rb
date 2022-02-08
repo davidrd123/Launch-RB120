@@ -1,20 +1,4 @@
-=begin
-
-Tic Tac Toe is a 2-player board game played on a 3x3 grid. Players take turns
-marking a square. The first player to mark 3 squares in a row wins.
-
-Nouns: board, player, square, grid
-Verbs: play, mark
-
-Board
-Square
-Player
-- mark
-- play
-
-=end
 require 'pry'
-require 'yaml'
 require_relative 'oo_ttt_display.rb'
 
 module GameIO
@@ -95,7 +79,6 @@ module Minimax
 end
 
 class Board
-  # include Minimax
   attr_accessor :squares, :human_marker, :computer_marker, :first_to_move
 
   WINNING_LINES = [[1, 2, 3], [4, 5, 6], [7, 8, 9]] + # rows
@@ -204,6 +187,7 @@ class Board
 
   # rubocop:disable Metrics/AbcSize
   # rubocop:disable Metrics/MethodLength
+  # rubocop:disable Layout/LineLength
   def draw
     ref_board = (1..9).each_slice(3)
                       .map { |row| " " * 3 + "|" + row.join("|") + "|" }
@@ -224,6 +208,7 @@ class Board
   end
   # rubocop:enable Metrics/AbcSize
   # rubocop:enable Metrics/MethodLength
+  # rubocop:enable Layout/LineLength
 
   private
 
@@ -400,14 +385,14 @@ class Computer < Player
       board.unmarked_keys.sample
     end
   end
-end
 
-def random_move
-  board.actions.sample
+  def random_move
+    board.actions.sample
+  end
 end
 
 class Score
-  WINNING_SCORE = 5
+  WINNING_SCORE = 1
 
   attr_accessor :human, :computer
 
@@ -450,6 +435,7 @@ class TTTGame
     clear
     display_tutorial
     main_game
+    display_overall_winner if overall_winner?
     display_goodbye_message
   end
 
@@ -516,16 +502,42 @@ class TTTGame
   end
 
   def display_welcome_message
-    welcome = Phrase.new('welcome', 0.75)
+    welcome = Phrase.new('welcome', 0.6)
     to = Phrase.new('to', 0.75)
-    tic = Phrase.new('tic ___ ___', 0.4)
-    tictac = Phrase.new('tic tac ___', 0.4)
-    tictactoe = Phrase.new('tic tac toe', 0.4)
+    tic = Phrase.new('tic ___ ___', 0.3)
+    tictac = Phrase.new('tic tac ___', 0.3)
+    tictactoe = Phrase.new('tic tac toe', 0.3)
     full_message = [welcome, to, tic, tictac, tictactoe]
     display_phrases(full_message)
     puts
     enter_to_continue
     clear
+  end
+
+  def display_overall_winner
+    case score.game_overall_winner
+    when :human
+      full_message = compose_you_won_or_lost_message("won")
+    when :computer
+      full_message = compose_you_won_or_lost_message("lost")
+    end
+    display_phrases(full_message)
+
+    final_score = Phrase.new("#{score.human}-#{score.computer}", 2)
+    display_phrases([final_score])
+    puts
+  end
+
+  def compose_you_won_or_lost_message(won_or_lost)
+    full_message = []
+    coda = ['!__', '!!_', '!!!']
+    timing = [0.2, 0.2, 0.6]
+    2.times do
+      0.upto(2) do |i|
+        full_message << Phrase.new("you #{won_or_lost}#{coda[i]}", timing[i])
+      end
+    end
+    full_message
   end
 
   def display_phrases(phrases)
@@ -555,7 +567,6 @@ class TTTGame
   end
 
   def display_goodbye_message
-    display_final_results
     puts "Thanks for playing Tic Tac Toe! Goodbye!"
   end
 
@@ -592,7 +603,7 @@ class TTTGame
     human_score = "#{human.name}: #{score.human}"
     computer_score = "#{computer.name}: #{score.computer}"
     case loc
-    when :top 
+    when :top
       puts "#{human_score} #{computer_score}"
     when :bottom
       puts "#{human_score} #{computer_score}"
