@@ -392,9 +392,7 @@ class Computer < Player
 end
 
 class Score
-  WINNING_SCORE = 5
-
-  attr_accessor :human, :computer
+  attr_accessor :human, :computer, :winning_score
 
   def initialize
     @computer = 0
@@ -406,8 +404,8 @@ class Score
   end
 
   def game_overall_winner
-    return :computer if computer == WINNING_SCORE
-    return :human if human == WINNING_SCORE
+    return :computer if computer == winning_score
+    return :human if human == winning_score
     nil
   end
 
@@ -447,6 +445,7 @@ class TTTGame
     board.set_player_markers(human.marker, computer.marker)
     ask_first_to_move
     computer.difficulty = ask_game_difficulty
+    score.winning_score = ask_number_of_games_to_win
   end
 
   def main_game
@@ -515,11 +514,10 @@ class TTTGame
   end
 
   def display_overall_winner
+    sleep(1)
     case score.game_overall_winner
-    when :human
-      full_message = compose_you_won_or_lost_message("won")
-    when :computer
-      full_message = compose_you_won_or_lost_message("lost")
+    when :human then full_message = compose_you_won_or_lost_message("won")
+    when :computer then full_message = compose_you_won_or_lost_message("lost")
     end
     display_phrases(full_message)
 
@@ -621,6 +619,17 @@ class TTTGame
     end
 
     answer == 'y'
+  end
+
+  def ask_number_of_games_to_win
+    answer = nil
+    loop do
+      prompt "How many games to win?"
+      answer = gets.chomp.to_i
+      break if answer.is_a?(Integer) && answer > 0 && answer < 6
+      prompt "Sorry, must be between 1 and 5"
+    end
+    answer
   end
 
   def ask_first_to_move

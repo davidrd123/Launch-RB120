@@ -3,7 +3,8 @@ require 'pry'
 class Letter
   WIDTH = 7
   HEIGHT = 7
-  CHAR = '*'
+  # CHAR = '*'
+  CHAR = "\u2588".encode('utf-8')
 
   def initialize(letter)
     @grid = Array.new(HEIGHT) { Array.new(WIDTH, ' ') }
@@ -69,6 +70,10 @@ class Letter
       fill_right_col
       fill_top_row
       fill_bottom_row
+      clear_cell(0, 0)
+      clear_cell(0, WIDTH - 1)
+      clear_cell(HEIGHT - 1, 0)
+      clear_cell(HEIGHT - 1, WIDTH - 1)
     when 'S'
       fill_top_row
       fill_middle_row
@@ -286,23 +291,25 @@ class Phrase
     fill_grid
   end
 
-  def fill_grid
-    0.upto(@grid_height - 1) do |row|
-      @words.each do |word|
-        @char_grid[row] << word.get_row(row) + '  '
-      end
+  def display_center
+    @char_grid.each do |row|
+      puts row.center(80)
     end
+    sleep(@delay)
   end
 
   def to_s
     @char_grid.join("\n")
   end
 
-  def display_center
-    @char_grid.each do |row|
-      puts row.center(80)
+  private
+
+  def fill_grid
+    0.upto(@grid_height - 1) do |row|
+      @words.each do |word|
+        @char_grid[row] << word.get_row(row) + '  '
+      end
     end
-    sleep(@delay)
   end
 end
 
